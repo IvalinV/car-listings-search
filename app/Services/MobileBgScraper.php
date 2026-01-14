@@ -24,26 +24,22 @@ class MobileBgScraper
             return [];
         }
 
-        // 2. Handle Encoding
-        // Mobile.bg often uses Windows-1251 (CP1251).
-        // We convert it to UTF-8 so the DomCrawler and your DB can read it.
         $html = $response->body();
-//        $html = mb_convert_encoding($html, 'UTF-8', 'Windows-1251');
 
         $crawler = new Crawler($html);
         $results = [];
 
         // 3. Parse the listings
-        // Mobile.bg uses table-based layouts or specific list item classes.
-        // Current listings are typically within .item or table structures.
-        $crawler->filter('.ads2023')->each(function (Crawler $node) use (&$results) {
+        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results) {
             try {
                 $results[] = [
                     'title' => trim($node->filter('.title')->text('')),
                     'price' => trim($node->filter('.price')->text('')),
-                    'link' => $node->filter('.zaglavie>a')->count() > 0 ? trim($node->filter('.zaglavie>a')->attr('href')) : null,
-                    'description' => trim($node->filter('.info')->text('')),
-                    'image' => $node->filter('.photo .big a.image .pic')->count() > 0 ? $node->filter('.photo .big a.image .pic')->attr('src') : null,
+                    'link' => $node->filter('.zaglavie>a')->count() > 0 ? ltrim(trim($node->filter('.zaglavie>a')->attr('href')), '/') : null,
+                    'description' => \Str::excerpt(trim($node->filter('.info')->text('')), options: ['radius' => 500]),
+                    'image' => $node->filter('.photo .big a.image .pic')->count() > 0 ? ltrim($node->filter('.photo .big a.image .pic')->attr('src'), '/') : null,
+                    'location' => trim($node->filter('.location')->text()),
+                    'source' => 'mobile.bg'
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
