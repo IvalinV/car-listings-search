@@ -127,6 +127,21 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        \App\Misc\LogChannels::SCRAPING_CARS => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/scraping-cars.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
+        \App\Misc\LogChannels::SCRAPING_MOBILE => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/scraping-mobile.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

@@ -2,8 +2,10 @@
 
 namespace App\Services\Scrapers;
 
+use App\Misc\LogChannels;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 
 class MobileBgScraper
@@ -32,7 +34,7 @@ class MobileBgScraper
         $results = [];
 
         // 3. Parse the listings
-        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results) {
+        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results, $page) {
             try {
                 $results[] = [
                     'title' => trim($node->filter('.title')->text('')),
@@ -46,6 +48,7 @@ class MobileBgScraper
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
                 // TODO: Create separate log channel and log errors there
+                Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for $page - {$e->getMessage()}");
             }
         });
 

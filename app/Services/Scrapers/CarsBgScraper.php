@@ -2,8 +2,10 @@
 
 namespace App\Services\Scrapers;
 
+use App\Misc\LogChannels;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 
 class CarsBgScraper
@@ -33,7 +35,7 @@ class CarsBgScraper
         $results = [];
 
         // 3. Parse the listings
-        $crawler->filter('.mdc-layout-grid__cell.offer')->each(function (Crawler $node) use (&$results) {
+        $crawler->filter('.mdc-layout-grid__cell.offer')->each(function (Crawler $node) use (&$results, $page) {
             try {
                 // Extract image from background-image style
                 $image = null;
@@ -58,6 +60,7 @@ class CarsBgScraper
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
                 // TODO: Create separate log channel and log errors there
+                Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
             }
         });
 
@@ -78,7 +81,7 @@ class CarsBgScraper
         // 2. Check for the Bulgarian keyword "днес"
         if (str_contains($cleanInput, 'днес')) {
             // Extract the time part (14:25)
-            $timePart = trim(str_replace('днес', '', $cleanInput));
+            $timePart = trim(str_replace(['днес', 'нов внос'], '', $cleanInput));
 
             // Create Carbon instance starting at today and setting the time
             $date = today()->setTimeFromTimeString($timePart);
