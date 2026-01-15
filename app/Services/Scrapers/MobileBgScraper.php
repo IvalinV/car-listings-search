@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Scrapers;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\DomCrawler\Crawler;
 
@@ -9,6 +10,7 @@ class MobileBgScraper
 {
     /**
      * @return array<int, array{title: string, price: string, link: string|null, description: string, image: string|null}>
+     * @throws ConnectionException
      */
     public function scrape(int $page = 1): array
     {
@@ -18,7 +20,7 @@ class MobileBgScraper
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language' => 'bg-BG,bg;q=0.9,en-US;q=0.8,en;q=0.7',
             'Referer' => 'https://www.mobile.bg/',
-        ])->get("https://www.mobile.bg/pcgi/mobile.cgi?act=3&sink=1&f1={$page}");
+        ])->get("https://www.mobile.bg/pcgi/mobile.cgi?act=3&sink=1&f1=$page");
 
         if (! $response->successful()) {
             return [];
