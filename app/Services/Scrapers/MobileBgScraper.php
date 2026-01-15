@@ -45,6 +45,7 @@ class MobileBgScraper
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
+                // TODO: Create separate log channel and log errors there
             }
         });
 

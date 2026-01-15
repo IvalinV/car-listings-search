@@ -53,12 +53,37 @@ class CarsBgScraper
                     'image' => $image,
                     'location' => trim($node->filter('.card__footer')->text('')),
                     'source' => 'cars.bg',
+                    'published_at' => $this->parseCreatedDate($node->filter('.card__subtitle')->text()),
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
+                // TODO: Create separate log channel and log errors there
             }
         });
 
         return $results;
+    }
+
+    /**
+     * Parse the date when the listing was published.
+     *
+     * @param  string  $input
+     * @return string
+     */
+    private function parseCreatedDate(string $input) : string
+    {
+        // 1. Clean the string (remove trailing spaces and the comma)
+        $cleanInput = trim(str_replace(',', '', $input));
+
+        // 2. Check for the Bulgarian keyword "днес"
+        if (str_contains($cleanInput, 'днес')) {
+            // Extract the time part (14:25)
+            $timePart = trim(str_replace('днес', '', $cleanInput));
+
+            // Create Carbon instance starting at today and setting the time
+            $date = today()->setTimeFromTimeString($timePart);
+        }
+
+        return $date->toDateTimeString();
     }
 }
