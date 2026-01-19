@@ -15,7 +15,7 @@ class CarsBgScraper
      *
      * @throws ConnectionException
      */
-    public function scrape(int $page = 1): array
+    public function scrape(int $page = 1, $time = null): array
     {
         // 1. Fetch HTML with specific headers to look like a browser
         $response = Http::withHeaders([
@@ -23,7 +23,7 @@ class CarsBgScraper
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language' => 'bg-BG,bg;q=0.9,en-US;q=0.8,en;q=0.7',
             'Referer' => 'https://www.cars.bg/',
-        ])->get("https://www.cars.bg/carslist.php?conditions%5B0%5D=4&conditions%5B1%5D=1&ajax=1&page=$page");
+        ])->get("https://www.cars.bg/carslist.php?conditions%5B0%5D=4&conditions%5B1%5D=1&ajax=1&page=$page&time=$time");
 
         if (! $response->successful()) {
             return [];
@@ -69,11 +69,8 @@ class CarsBgScraper
 
     /**
      * Parse the date when the listing was published.
-     *
-     * @param  string  $input
-     * @return string
      */
-    private function parseCreatedDate(string $input) : string
+    private function parseCreatedDate(string $input): string
     {
         // 1. Clean the string (remove trailing spaces and the comma)
         $cleanInput = trim(str_replace(',', '', $input));
@@ -85,8 +82,20 @@ class CarsBgScraper
 
             // Create Carbon instance starting at today and setting the time
             $date = today()->setTimeFromTimeString($timePart);
+        } else {
+            $date = \Carbon\Carbon::createFromFormat('d.m.y', $cleanInput, 'Europe/Sofia');
         }
 
-        return $date->toDateTimeString();
+        return $date ? $date->toDateTimeString() : '';
+    }
+
+    public function test()
+    {
+        $time_diff = today()->diffInHours(now());
+
+        for ($i = 0; $i <= intval($time_diff); $i++) {
+            $time = today()->addHours($i)->getPreciseTimestamp(3);
+            dump((new \App\Services\Scrapers\CarsBgScraper)->scrape($i, $time));
+        }
     }
 }
