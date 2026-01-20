@@ -65,9 +65,10 @@ class AutoBgScraper
                     'description' => trim($node->filter('.info')->text('')),
                     'image' => $image,
                     'source' => 'auto.bg',
+                    'params' => trim($node->filter('.info')->text('')),
                 ];
             } catch (\Exception $e) {
-                Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape auto.bg ads for page $page - {$e->getMessage()}");
+                Log::channel(LogChannels::SCRAPING_AUTO)->error("Failed to scrape auto.bg ads for page $page - {$e->getMessage()}");
             }
         });
 

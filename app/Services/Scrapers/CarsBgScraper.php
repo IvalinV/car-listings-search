@@ -55,11 +55,11 @@ class CarsBgScraper
                     'image' => $image,
                     'location' => trim($node->filter('.card__footer')->text('')),
                     'source' => 'cars.bg',
+                    'params' => trim($node->filter('.card__secondary.mdc-typography--body1')->text('')),
                     'published_at' => $this->parseCreatedDate($node->filter('.card__subtitle')->text()),
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
-                // TODO: Create separate log channel and log errors there
                 Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
             }
         });

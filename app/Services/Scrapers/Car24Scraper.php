@@ -2,8 +2,11 @@
 
 namespace App\Services\Scrapers;
 
+use App\Misc\LogChannels;
 use GuzzleHttp\Client;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 
 class Car24Scraper
@@ -17,6 +20,12 @@ class Car24Scraper
             'Referer' => 'https://www.cars24.bg/',
         ])->get("https://api.car24.bg/mobile_api/srcresults/?request_uri=obiavi/p-$page");
 
+        try {
+            $response->throwUnlessStatus(200);
+        } catch (RequestException $e) {
+            Log::channel(LogChannels::SCRAPING_CAR24)->error("Failed to scrape car24.bg ads for page $page - {$e->getMessage()}");
+        }
+        
         return $response->json('data.adverts');
     }
 }

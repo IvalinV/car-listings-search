@@ -43,15 +43,72 @@ class MobileBgScraper
                     'description' => \Str::excerpt(trim($node->filter('.info')->text('')), options: ['radius' => 500]),
                     'image' => $node->filter('.photo .big a.image .pic')->count() > 0 ? ltrim($node->filter('.photo .big a.image .pic')->attr('src'), '/') : null,
                     'location' => trim($node->filter('.location')->text()),
-                    'source' => 'mobile.bg'
+                    'source' => 'mobile.bg',
+                    'params' => $this->extractListingParams($node->filter('.params')->first()->text())
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
-                // TODO: Create separate log channel and log errors there
                 Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for $page - {$e->getMessage()}");
             }
         });
 
         return $results;
+    }
+
+    public function extractListingParams($input): array
+    {
+        /**
+         * 1. Split the string into segments using the pipe "|" delimiter.
+         */
+        $parts = array_map('trim', explode('|', $input));
+
+        // Correctly identifying the first segment as Production Date
+        $productionRaw = $parts[0] ?? null; // e.g., "януари 2018 г."
+        $mileage       = $parts[1] ?? null; // e.g., "194844 км"
+        $transmission  = $parts[2] ?? null; // e.g., "Автоматична"
+        $engineType    = $parts[3] ?? null; // e.g., "Бензин"
+
+        /**
+         * 2. Parse Production Year and Month
+         * We look for a 4-digit year.
+         */
+        $productionYear = null;
+        if (preg_match('/\d{4}/', $productionRaw, $yearMatch)) {
+            $productionYear = $yearMatch[0]; // Result: 2018
+        }
+
+        /**
+         * 3. Processing the last segment (Index 4).
+         */
+        $lastPart = $parts[4] ?? '';
+
+        // Extract Horsepower
+        if (preg_match('/^(\d+)\s*к\.с\./u', $lastPart, $hpMatch)) {
+            $horsepower = $hpMatch[1]; // Result: 270
+        }
+
+        // Extract Listing Update Time
+        if (preg_match('/(\d{2}:\d{2})/', $lastPart, $timeMatch)) {
+            $time = $timeMatch[1]; // Result: 15:38
+        }
+
+        /**
+         * Creating a Carbon instance for the Listing's actual "Update" time.
+         */
+        if (isset($time)) {
+            $listingUpdated = \Carbon\Carbon::now('Europe/Sofia')->setTimeFromTimeString($time);
+        }
+
+        /**
+         * Outputting the parsed data
+         */
+        return [
+            'production_year' => $productionYear ?? null,
+            'mileage' => $mileage,
+            'horsepower"' => $horsepower ?? null,
+            'fuel' => $engineType,
+            'last_updated_at' => $listingUpdated?->toDateTimeString() ?? null,
+            'transmission' => $transmission ?? null,
+        ];
     }
 }
