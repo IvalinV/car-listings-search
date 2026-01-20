@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "/usr/bin/php8.3",
+      "args": [
+        "/home/ivalin-venkov/Documents/Projects/car-listings-search/artisan",
+        "boost:mcp"
+      ]
+    }
+  }
+}

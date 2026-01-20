@@ -25,7 +25,7 @@ class Car24Scraper
         } catch (RequestException $e) {
             Log::channel(LogChannels::SCRAPING_CAR24)->error("Failed to scrape car24.bg ads for page $page - {$e->getMessage()}");
         }
-        
+
         return $response->json('data.adverts');
     }
 }
