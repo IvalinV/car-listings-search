@@ -17,7 +17,7 @@ class Car24Scraper
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language' => 'bg-BG,bg;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer' => 'https://www.cars24.bg/',
+            'Referer' => 'https://www.car24.bg/',
         ])->get("https://api.car24.bg/mobile_api/srcresults/?request_uri=obiavi/p-$page");
 
         try {
@@ -26,6 +26,44 @@ class Car24Scraper
             Log::channel(LogChannels::SCRAPING_CAR24)->error("Failed to scrape car24.bg ads for page $page - {$e->getMessage()}");
         }
 
-        return $response->json('data.adverts');
+        $results = $response->json('data.adverts');
+
+        return \Arr::map($results, function ($item) {
+           return [
+               'title' => \Arr::get($item, 'title'),
+               'price' => \Arr::get($item, 'price'),
+               'currency' => \Arr::get($item, 'currency'),
+               'link' => 'https://car24.bg'.\Arr::get($item, 'idalink'),
+               'description' => $this->generateDescription($item),
+               'image' =>  'https://'.ltrim(\Arr::get($item, 'bigPics.0'), '/'),
+               'source' => 'car24.bg',
+               'params' => [
+                   "production_year" => \Arr::get($item, 'year'),
+                   "mileage" => \Arr::get($item, 'km'),
+                   "horsepower" => null,
+                    "fuel" => \Arr::get($item, 'engine_type') === 'Бензинов' ? 'Petrol' : 'Diesel',
+                    "engine_cc" => null,
+                    "euro_standard" => null,
+                    "last_updated_at" => null,
+                    "transmission" => null,
+               ]
+           ];
+        });
+    }
+
+    /**
+     * Generate listing description.
+     *
+     * @param $item
+     * @return string $description
+     */
+    private function generateDescription($item) : string
+    {
+        $month = \Arr::get($item, 'month');
+        $year = \Arr::get($item, 'year');
+        $mileage = \Arr::get($item, 'km');
+        $location = \Arr::get($item, 'locat');
+
+        return "$month $year, $location, $mileage км";
     }
 }

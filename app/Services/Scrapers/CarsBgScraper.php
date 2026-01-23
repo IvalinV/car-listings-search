@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
 
-class CarsBgScraper
+class CarsBgScraper extends Scraper
 {
     /**
      * @return array<int, array{title: string, price: string, link: string|null, description: string, image: string|null}>
