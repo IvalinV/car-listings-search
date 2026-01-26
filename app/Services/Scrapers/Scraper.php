@@ -76,9 +76,9 @@ class Scraper implements ScraperInterface
          * 7. Detect Fuel Type
          */
         $fuelType = null;
-        $fuels = ['Бензинов' => 'Petrol', 'Дизелов' => 'Diesel', 'Хибриден' => 'Hybrid', 'Електрически' => 'Electric'];
+        $fuels = ['Бензин' => 'Petrol', 'Дизел' => 'Diesel', 'Газ' => 'Gas', 'Хибрид' => 'Hybrid', 'Електрически' => 'Electric'];
         foreach ($fuels as $bg => $en) {
-            if (mb_stripos($input, $bg) !== false) {
+            if (\Str::contains($input, $bg, true)) {
                 $fuelType = $en;
                 break;
             }

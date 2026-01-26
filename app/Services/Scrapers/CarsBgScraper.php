@@ -55,7 +55,7 @@ class CarsBgScraper extends Scraper
                     'image' => $image,
                     'location' => trim($node->filter('.card__footer')->text('')),
                     'source' => 'cars.bg',
-                    'params' => trim($node->filter('.card__secondary.mdc-typography--body1')->text('')),
+                    'params' => $this->extractListingParams(trim($node->filter('.card__secondary.mdc-typography--body1')->text(''))),
                     'published_at' => $this->parseCreatedDate($node->filter('.card__subtitle')->text()),
                 ];
             } catch (\Exception $e) {
@@ -89,13 +89,14 @@ class CarsBgScraper extends Scraper
         return $date ? $date->toDateTimeString() : '';
     }
 
-    public function test()
+    public function extractListingParams($input): array
     {
-        $time_diff = today()->diffInHours(now());
+        $temp = explode(',', $input);
 
-        for ($i = 0; $i <= intval($time_diff); $i++) {
-            $time = today()->addHours($i)->getPreciseTimestamp(3);
-            dump((new \App\Services\Scrapers\CarsBgScraper)->scrape($i, $time));
-        }
+        return [
+            'production_year' => trim($temp[0]),
+            'fuel' => \Str::contains($temp[1], 'Бензин', true) ? 'Petrol' : 'Diesel',
+            'mileage' => trim(explode('км.', $temp[2])[0]),
+        ];
     }
 }
