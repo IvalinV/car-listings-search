@@ -3,13 +3,11 @@
 namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
-use GuzzleHttp\Client;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\DomCrawler\Crawler;
 
-class Car24Scraper
+class Car24Scraper extends Scraper
 {
     public function scrape($page = 1)
     {
@@ -29,35 +27,34 @@ class Car24Scraper
         $results = $response->json('data.adverts');
 
         return \Arr::map($results, function ($item) {
-           return [
-               'title' => \Arr::get($item, 'title'),
-               'price' => \Arr::get($item, 'price'),
-               'currency' => \Arr::get($item, 'currency'),
-               'link' => 'https://car24.bg'.\Arr::get($item, 'idalink'),
-               'description' => $this->generateDescription($item),
-               'image' =>  'https://'.ltrim(\Arr::get($item, 'bigPics.0'), '/'),
-               'source' => 'car24.bg',
-               'params' => [
-                   "production_year" => \Arr::get($item, 'year'),
-                   "mileage" => \Arr::get($item, 'km'),
-                   "horsepower" => null,
-                    "fuel" => \Arr::get($item, 'engine_type') === 'Бензинов' ? 'Petrol' : 'Diesel',
-                    "engine_cc" => null,
-                    "euro_standard" => null,
-                    "last_updated_at" => null,
-                    "transmission" => null,
-               ]
-           ];
+            return [
+                'title' => \Arr::get($item, 'title'),
+                'price' => \Arr::get($item, 'price'),
+                'currency' => \Arr::get($item, 'currency'),
+                'link' => 'https://car24.bg'.\Arr::get($item, 'idalink'),
+                'description' => $this->generateDescription($item),
+                'image' => 'https://'.ltrim(\Arr::get($item, 'bigPics.0'), '/'),
+                'source' => 'car24.bg',
+                'params' => [
+                    'production_year' => \Arr::get($item, 'year'),
+                    'mileage' => \Arr::get($item, 'km'),
+                    'horsepower' => null,
+                    'fuel' => \Arr::get($item, 'engine_type') === 'Бензинов' ? 'Petrol' : 'Diesel', // TODO: Update to accommodate all the fuel types
+                    'engine_cc' => null,
+                    'euro_standard' => null,
+                    'last_updated_at' => null,
+                    'transmission' => null,
+                ],
+            ];
         });
     }
 
     /**
      * Generate listing description.
      *
-     * @param $item
      * @return string $description
      */
-    private function generateDescription($item) : string
+    private function generateDescription($item): string
     {
         $month = \Arr::get($item, 'month');
         $year = \Arr::get($item, 'year');

@@ -48,7 +48,7 @@ class MobileBgScraper extends Scraper
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
-                Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for $page - {$e->getMessage()}");
+                Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for page $page - {$e->getMessage()}");
             }
         });
 

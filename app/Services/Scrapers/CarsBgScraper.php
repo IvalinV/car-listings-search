@@ -17,6 +17,8 @@ class CarsBgScraper extends Scraper
      */
     public function scrape(int $page = 1, $time = null): array
     {
+        $time = $time ?? now()->getPreciseTimestamp(3);
+
         // 1. Fetch HTML with specific headers to look like a browser
         $response = Http::withHeaders([
             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -78,25 +80,44 @@ class CarsBgScraper extends Scraper
         // 2. Check for the Bulgarian keyword "днес"
         if (str_contains($cleanInput, 'днес')) {
             // Extract the time part (14:25)
-            $timePart = trim(str_replace(['днес', 'нов внос'], '', $cleanInput));
+            $timePart = trim(str_replace(['днес', 'вчера', 'нов внос'], '', $cleanInput));
 
             // Create Carbon instance starting at today and setting the time
-            $date = today()->setTimeFromTimeString($timePart);
+            $date = ! empty($timePart) ? today()->setTimeFromTimeString($timePart) : null;
         } else {
-            $date = \Carbon\Carbon::createFromFormat('d.m.y', $cleanInput, 'Europe/Sofia');
+            if (\Str::contains($cleanInput, 'вчера')) {
+                $date = \Carbon\Carbon::yesterday();
+            } else {
+                $date = \Carbon\Carbon::createFromFormat('d.m.y', $cleanInput, 'Europe/Sofia');
+            }
         }
 
         return $date ? $date->toDateTimeString() : '';
     }
 
-    public function extractListingParams($input): array
+    public function scrapeDailyResults(int $page = 1): array
     {
-        $temp = explode(',', $input);
+        $yesterday = today()->subDay();
+        $today = today();
 
-        return [
-            'production_year' => trim($temp[0]),
-            'fuel' => \Str::contains($temp[1], 'Бензин', true) ? 'Petrol' : 'Diesel',
-            'mileage' => trim(explode('км.', $temp[2])[0]),
-        ];
+        $results = [];
+
+        $difference = $yesterday->diffInHours($today);
+
+        for ($i = 1; $i <= $difference; $i++) {
+            $time = today()->subHours($i)->getPreciseTimestamp(3);
+            try {
+                array_push($results, $this->scrape(page: $page, time: $time));
+            } catch (\Illuminate\Http\Client\ConnectionException  $e) {
+                Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
+            }
+        }
+
+        return \Arr::collapse($results);
+    }
+
+    public function startScrapingFrom(): int
+    {
+        return today()->getPreciseTimestamp(3);
     }
 }
