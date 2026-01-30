@@ -16,16 +16,17 @@ class ScrapeListingsInitiallyCommand extends Command
     protected $description = 'Scrape as much listings as possible initially';
 
     private int $maxPages = 100;
+
     private int $chunkSize = 10;
 
     private string $type = 'initial';
 
     public function handle(): void
     {
-//        $this->scrapeFromAutoBg();
+        $this->scrapeFromAutoBg();
         $this->scrapeFromCarsBg();
-//        $this->scrapeFromCar24();
-//        $this->scrapeFromMobileBg();
+        $this->scrapeFromCar24();
+        $this->scrapeFromMobileBg();
     }
 
     protected function scrapeFromAutoBg(): void
@@ -35,7 +36,7 @@ class ScrapeListingsInitiallyCommand extends Command
         $this->scrapeListings($scraper_class, $this->maxPages, $this->chunkSize);
     }
 
-    protected function scrapeFromCarsBg() : void
+    protected function scrapeFromCarsBg(): void
     {
         $scraper_class = CarsBgScraper::class;
 
@@ -43,14 +44,14 @@ class ScrapeListingsInitiallyCommand extends Command
 
     }
 
-    protected function scrapeFromCar24() : void
+    protected function scrapeFromCar24(): void
     {
         $scraper_class = Car24Scraper::class;
 
         $this->scrapeListings($scraper_class, $this->maxPages, $this->chunkSize);
     }
 
-    protected function scrapeFromMobileBg() : void
+    protected function scrapeFromMobileBg(): void
     {
         $scraper_class = MobileBgScraper::class;
 
@@ -59,11 +60,6 @@ class ScrapeListingsInitiallyCommand extends Command
 
     /**
      * Scrape listing for the provided Scraper Class.
-     *
-     * @param  string  $scraper_class
-     * @param  int  $maxPages
-     * @param  int  $chunkSize
-     * @return void
      */
     public function scrapeListings(string $scraper_class, int $maxPages, int $chunkSize): void
     {

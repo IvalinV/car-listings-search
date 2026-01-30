@@ -27,19 +27,22 @@ class Car24Scraper extends Scraper
         $results = $response->json('data.adverts');
 
         return \Arr::map($results, function ($item) {
+            $images_array = \Arr::get($item, 'bigPics', []);
+            $image = count($images_array) ? \Arr::first($item['bigPics'], fn($value) => ! is_null($value)) : null;
+
             return [
                 'title' => \Arr::get($item, 'title'),
                 'price' => \Arr::get($item, 'price'),
                 'currency' => \Arr::get($item, 'currency'),
                 'link' => 'https://car24.bg'.\Arr::get($item, 'idalink'),
                 'description' => $this->generateDescription($item),
-                'image' => 'https://'.ltrim(\Arr::get($item, 'bigPics.0'), '/'),
+                'image' => $image ? 'https://'.ltrim($image, '/') : $image,
                 'source' => 'car24.bg',
                 'params' => [
                     'production_year' => \Arr::get($item, 'year'),
                     'mileage' => \Arr::get($item, 'km'),
                     'horsepower' => null,
-                    'fuel' => \Arr::get($item, 'engine_type') === 'Бензинов' ? 'Petrol' : 'Diesel', // TODO: Update to accommodate all the fuel types
+                    'fuel' => \Arr::get($item, 'engine_type'),
                     'engine_cc' => null,
                     'euro_standard' => null,
                     'last_updated_at' => null,

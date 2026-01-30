@@ -45,11 +45,8 @@ class ScrapeListingJob implements ShouldQueue
 
     /**
      * Store the scraped data in the database
-     *
-     * @param  array  $results
-     * @return void
      */
-    public function persistRecords(array $results) : void
+    public function persistRecords(array $results): void
     {
         foreach ($results as $record) {
             $mileage = Arr::get($record, 'params.mileage');
@@ -72,6 +69,7 @@ class ScrapeListingJob implements ShouldQueue
                 'mileage' => $mileage,
                 'location' => Arr::get($record, 'location'),
                 'transmission' => Arr::get($record, 'params.transmission'),
+                'image_url' => Arr::get($record, 'image'),
                 'source_urls' => json_encode([$source_url]),
             ], 'fingerprint');
         }

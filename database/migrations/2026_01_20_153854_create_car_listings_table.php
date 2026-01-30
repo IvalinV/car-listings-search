@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('fuel_type')->nullable();
             $table->string('transmission')->nullable();
             $table->string('location')->nullable();
+            $table->string('image_url')->nullable();
             $table->json('source_urls'); // Store multiple links (cars.bg, mobile.bg)
             $table->boolean('is_active')->default(true);
             $table->timestamps();
