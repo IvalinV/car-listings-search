@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Services\Scrapers\CarsBgScraper;
+use App\Services\Scrapers\Scraper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,28 +17,30 @@ class ScrapeListingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private $scraper;
-
     public function __construct(
-        private readonly string $scraper_class, private readonly string $from_page, private readonly string $to_page, private readonly string $type = 'daily'
-    ) {
-        $this->scraper = app($scraper_class);
-    }
+        private readonly string $scraper_class,
+        private readonly string $from_page,
+        private readonly string $to_page,
+        private readonly string $type = 'daily'
+    ) {}
 
     public function handle(): void
     {
+        $scraper = app($this->scraper_class);
         $results = [];
 
         for ($i = $this->from_page; $i <= $this->to_page; $i++) {
             $results[] = $this->scraper_class === CarsBgScraper::class && $this->type === 'daily'
-                ? $this->scraper->scrapeDailyResults(page: $i)
-                : $this->scraper->scrape(page: $i);
+                ? $scraper->scrapeDailyResults(page: $i)
+                : $scraper->scrape(page: $i);
+
+            sleep(2);
         }
 
         $results = Arr::collapse($results);
 
         try {
-            $this->persistRecords($results);
+            $this->persistRecords($results, $scraper);
         } catch (\Throwable $exception) {
             \Log::channel(LogChannels::SCRAPING_JOB)->error("Scraping job exception: {$exception->getMessage()}");
         }
@@ -46,18 +49,21 @@ class ScrapeListingJob implements ShouldQueue
     /**
      * Store the scraped data in the database
      */
-    public function persistRecords(array $results): void
+    public function persistRecords(array $results, Scraper $scraper): void
     {
         foreach ($results as $record) {
             $mileage = Arr::get($record, 'params.mileage');
             $year = Arr::get($record, 'params.production_year');
             $fuel_type = Arr::get($record, 'params.fuel');
-            $source_url = $this->scraper->formatListingUrl(Arr::get($record, 'link'));
+            $source_url = $scraper->formatListingUrl(Arr::get($record, 'link'));
             $price = $record['source'] !== 'car24.bg'
-                ? $this->scraper->extractPrice(Arr::get($record, 'price'))['eur']
+                ? $scraper->extractPrice(Arr::get($record, 'price'))['eur']
                 : $record['price'];
 
             $uuid = hash('sha256', "$mileage $year $fuel_type");
+            $listing = CarListing::where('fingerprint', $uuid)->first();
+            $sources = $listing ? $listing->source_urls : [];
+            $sources[] = $source_url;
 
             CarListing::upsert([
                 'fingerprint' => $uuid,
@@ -70,7 +76,7 @@ class ScrapeListingJob implements ShouldQueue
                 'location' => Arr::get($record, 'location'),
                 'transmission' => Arr::get($record, 'params.transmission'),
                 'image_url' => Arr::get($record, 'image'),
-                'source_urls' => json_encode([$source_url]),
+                'source_urls' => json_encode($sources),
             ], 'fingerprint');
         }
     }

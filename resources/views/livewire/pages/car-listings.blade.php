@@ -236,7 +236,7 @@ class extends Component {
                     @if($this->activeFilterCount > 0)
                         <button
                             wire:click="clearFilters"
-                            class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                            class="text-sm text-blue-600 hover:text-blue-700 cursor-pointer dark:text-blue-400 dark:hover:text-blue-300"
                         >
                             Изчисти филтрите
                         </button>
@@ -362,13 +362,13 @@ class extends Component {
                     <div class="mt-2 flex gap-2">
                         <button
                             wire:click="$set('sortDirection', 'asc')"
-                            class="flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors {{ $sortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}"
+                            class="flex-1 rounded-lg px-3 py-1.5 text-sm font-medium cursor-pointer transition-colors {{ $sortDirection === 'asc' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}"
                         >
                             Възходящо
                         </button>
                         <button
                             wire:click="$set('sortDirection', 'desc')"
-                            class="flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors {{ $sortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}"
+                            class="flex-1 rounded-lg px-3 py-1.5 text-sm font-medium cursor-pointer transition-colors {{ $sortDirection === 'desc' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}"
                         >
                             Низходящо
                         </button>
@@ -515,7 +515,7 @@ class extends Component {
                     @if($this->activeFilterCount > 0)
                         <button
                             wire:click="clearFilters"
-                            class="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                            class="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm cursor-pointer font-medium text-white transition-colors hover:bg-blue-700"
                         >
                             Изчисти филтрите
                         </button>

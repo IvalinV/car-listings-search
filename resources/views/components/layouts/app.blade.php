@@ -37,17 +37,17 @@
         {{ $slot }}
     </main>
 
-    <footer class="mt-auto border-t border-gray-200 bg-white py-8 dark:border-gray-700 dark:bg-gray-800">
+    <footer class="mt-auto border-t border-gray-200 bg-white py-8 dark:border-gray-700 dark:bg-gray-800 sticky">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                <p class="text-sm text-gray-500 dark:text-gray-400">
+                <p class="text-sm text-gray-500 dark:text-white">
                     AutoSearch - Агрегатор на автомобилни обяви от България
                 </p>
-                <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                    <span>cars.bg</span>
-                    <span>mobile.bg</span>
-                    <span>auto.bg</span>
-                    <span>car24.bg</span>
+                <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-white">
+                    <a class="dark:hover:text-gray-200" href="https://www.cars.bg/" target="_blank">cars.bg</a>
+                    <a class="dark:hover:text-gray-200" href="https://www.mobile.bg/" target="_blank">mobile.bg</a>
+                    <a class="dark:hover:text-gray-200" href="https://www.auto.bg/" target="_blank">auto.bg</a>
+                    <a class="dark:hover:text-gray-200" href="https://www.car24.bg/" target="_blank">car24.bg</a>
                 </div>
             </div>
         </div>

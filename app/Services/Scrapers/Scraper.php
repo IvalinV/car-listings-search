@@ -12,6 +12,7 @@ class Scraper implements ScraperInterface
         'Газ' => 'Gas',
         'Хибрид' => 'Hybrid',
         'Електрически' => 'Electric',
+        'Плъг ин Хибрид' => 'Plugin Hybrid',
     ];
 
     public $max_pages_to_scrape = 100;
@@ -266,15 +267,13 @@ class Scraper implements ScraperInterface
 
     /**
      * Ensures that a URL starting with 'www.' is converted to a 'https://' link.
-     * @param string $url
-     * @return string
      */
-    function formatListingUrl(string $url): string
+    public function formatListingUrl(string $url): string
     {
         // We check if the string starts specifically with 'www.'
         // str_starts_with is available in PHP 8.0+ (standard for Laravel 12)
         if (str_starts_with($url, 'www.')) {
-            return 'https://' . substr($url, 4);
+            return 'https://'.substr($url, 4);
         }
 
         return $url;

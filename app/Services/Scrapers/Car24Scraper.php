@@ -28,7 +28,7 @@ class Car24Scraper extends Scraper
 
         return \Arr::map($results, function ($item) {
             $images_array = \Arr::get($item, 'bigPics', []);
-            $image = count($images_array) ? \Arr::first($item['bigPics'], fn($value) => ! is_null($value)) : null;
+            $image = count($images_array) ? \Arr::first($item['bigPics'], fn ($value) => ! is_null($value)) : null;
 
             return [
                 'title' => \Arr::get($item, 'title'),
@@ -42,7 +42,7 @@ class Car24Scraper extends Scraper
                     'production_year' => \Arr::get($item, 'year'),
                     'mileage' => \Arr::get($item, 'km'),
                     'horsepower' => null,
-                    'fuel' => \Arr::get($item, 'engine_type'),
+                    'fuel' => $this->determineFuelType(\Arr::get($item, 'engine_type')),
                     'engine_cc' => null,
                     'euro_standard' => null,
                     'last_updated_at' => null,
