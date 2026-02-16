@@ -404,9 +404,14 @@ class extends Component {
                 </div>
             </div>
 
+            {{-- Pagination --}}
+            <div class="mt-6  cursor-pointer!">
+                {{ $this->listings->links() }}
+            </div>
+
             {{-- Car Grid --}}
             @if($this->listings->count() > 0)
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 py-5">
                     @foreach($this->listings as $car)
                         <a
                             href="{{ url('/cars/' . $car->id) }}"
@@ -501,7 +506,7 @@ class extends Component {
                 </div>
 
                 {{-- Pagination --}}
-                <div class="mt-6  cursor-pointer!">
+                <div>
                     {{ $this->listings->links() }}
                 </div>
             @else
