@@ -63,7 +63,10 @@ class ScrapeListingJob implements ShouldQueue
             $uuid = hash('sha256', "$mileage $year $fuel_type");
             $listing = CarListing::where('fingerprint', $uuid)->first();
             $sources = $listing ? $listing->source_urls : [];
-            $sources[] = $source_url;
+
+            if(! in_array($source_url, $sources)) {
+                $sources[] = $source_url;
+            }
 
             CarListing::upsert([
                 'fingerprint' => $uuid,
