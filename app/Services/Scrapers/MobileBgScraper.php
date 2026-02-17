@@ -35,7 +35,7 @@ class MobileBgScraper extends Scraper
         $results = [];
 
         // 3. Parse the listings
-        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results) {
+        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results, $page) {
             try {
                 $results[] = [
                     'title' => trim($node->filter('.title')->text('')),

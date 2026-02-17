@@ -46,6 +46,7 @@ class Car24Scraper extends Scraper
                     'engine_cc' => null,
                     'euro_standard' => null,
                     'last_updated_at' => null,
+                    'location' => \Arr::get($item, 'locat'),
                     'transmission' => null,
                 ],
             ];
@@ -63,7 +64,8 @@ class Car24Scraper extends Scraper
         $year = \Arr::get($item, 'year');
         $mileage = \Arr::get($item, 'km');
         $location = \Arr::get($item, 'locat');
+        $modification = \Arr::get($item, 'modification');
 
-        return "$month $year, $location, $mileage км";
+        return "$month $year, $modification, $location, $mileage км";
     }
 }
