@@ -95,19 +95,19 @@ class CarsBgScraper extends Scraper
         return $date ? $date->toDateTimeString() : '';
     }
 
-    public function scrapeDailyResults(int $page = 1): array
+    public function scrapeNewestListings(int $page = 1): array
     {
-        $yesterday = today()->subDay();
-        $today = today();
+        $start = now()->subMinutes(20);
+        $end = now();
 
         $results = [];
 
-        $difference = $yesterday->diffInHours($today);
+        $difference = $start->diffInMinutes($end);
 
         for ($i = 1; $i <= $difference; $i++) {
-            $time = today()->subHours($i)->getPreciseTimestamp(3);
+            $time = now()->subMinutes($i)->getPreciseTimestamp(3);
             try {
-                array_push($results, $this->scrape(page: $page, time: $time));
+                $results[] = $this->scrape(page: $page, time: $time);
             } catch (\Illuminate\Http\Client\ConnectionException  $e) {
                 Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
             }

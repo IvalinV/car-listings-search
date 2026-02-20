@@ -9,11 +9,11 @@ use App\Services\Scrapers\CarsBgScraper;
 use App\Services\Scrapers\MobileBgScraper;
 use Illuminate\Console\Command;
 
-class ScrapeListingsDailyCommand extends Command
+class ScrapeNewListingsCommand extends Command
 {
-    protected $signature = 'scrape:listings-daily';
+    protected $signature = 'scrape:new-listings';
 
-    protected $description = 'Scrape daily listings';
+    protected $description = 'Scrape new listings';
 
     protected string $type = 'daily';
 
@@ -56,7 +56,7 @@ class ScrapeListingsDailyCommand extends Command
      */
     public function scrapeDailyListings(string $scraper_class): void
     {
-        $this->info("Dispatching batches for existing listings of $this->chunkSize for $scraper_class pages...");
+        $this->info("Dispatching batches for newest listings of $this->chunkSize for $scraper_class pages...");
 
         for ($startPage = 1; $startPage <= $this->maxPages; $startPage += $this->chunkSize) {
             $endPage = $startPage + ($this->chunkSize - 1);

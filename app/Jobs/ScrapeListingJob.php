@@ -41,7 +41,7 @@ class ScrapeListingJob implements ShouldQueue
 
         for ($i = $this->from_page; $i <= $this->to_page; $i++) {
             $results[] = $this->scraper_class === CarsBgScraper::class && $this->type === 'daily'
-                ? $scraper->scrapeDailyResults(page: $i)
+                ? $scraper->scrapeNewestListings(page: $i)
                 : $scraper->scrape(page: $i);
 
             sleep(2);

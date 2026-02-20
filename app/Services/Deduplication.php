@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Misc\LogChannels;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Jenssegers\ImageHash\ImageHash;
 use Jenssegers\ImageHash\Implementations\PerceptualHash;
 
@@ -21,7 +23,7 @@ class Deduplication
             return self::paramsHash($params);
         }
 
-        if (! \Str::isUrl($imageUrl)) {
+        if (! Str::isUrl($imageUrl) && ! Str::contains($imageUrl, 'https')) {
             $imageUrl = "https://$imageUrl";
         }
 
@@ -46,9 +48,9 @@ class Deduplication
      */
     private static function paramsHash(?array $params): string
     {
-        $mileage = \Arr::get($params, 'mileage');
-        $year = \Arr::get($params, 'year');
-        $fuelType = \Arr::get($params, 'fuel_type');
+        $mileage = Arr::get($params, 'mileage');
+        $year = Arr::get($params, 'year');
+        $fuelType = Arr::get($params, 'fuel_type');
 
         return hash('sha256', "$mileage $year $fuelType");
     }
