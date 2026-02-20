@@ -4,6 +4,7 @@ namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -26,27 +27,27 @@ class Car24Scraper extends Scraper
 
         $results = $response->json('data.adverts');
 
-        return \Arr::map($results, function ($item) {
-            $images_array = \Arr::get($item, 'bigPics', []);
-            $image = count($images_array) ? \Arr::first($item['bigPics'], fn ($value) => ! is_null($value)) : null;
+        return Arr::map($results, function ($item) {
+            $images_array = Arr::get($item, 'bigPics', []);
+            $image = count($images_array) ? Arr::first($item['bigPics'], fn ($value) => ! is_null($value)) : null;
 
             return [
-                'title' => \Arr::get($item, 'title'),
-                'price' => \Arr::get($item, 'price'),
-                'currency' => \Arr::get($item, 'currency'),
-                'link' => 'https://car24.bg'.\Arr::get($item, 'idalink'),
+                'title' => Arr::get($item, 'title'),
+                'price' => Arr::get($item, 'price'),
+                'currency' => Arr::get($item, 'currency'),
+                'link' => 'https://car24.bg'.Arr::get($item, 'idalink'),
                 'description' => $this->generateDescription($item),
                 'image' => $this->getImage($image),
                 'source' => 'car24.bg',
                 'params' => [
-                    'production_year' => \Arr::get($item, 'year'),
-                    'mileage' => \Arr::get($item, 'km'),
+                    'production_year' => Arr::get($item, 'year'),
+                    'mileage' => Arr::get($item, 'km'),
                     'horsepower' => null,
-                    'fuel' => $this->determineFuelType(\Arr::get($item, 'engine_type')),
+                    'fuel' => $this->determineFuelType(Arr::get($item, 'engine_type')),
                     'engine_cc' => null,
                     'euro_standard' => null,
                     'last_updated_at' => null,
-                    'location' => \Arr::get($item, 'locat'),
+                    'location' => Arr::get($item, 'locat'),
                     'transmission' => null,
                 ],
             ];
@@ -71,12 +72,12 @@ class Car24Scraper extends Scraper
 
     public function getImage($url) : string
     {
-        if (\Str::contains($url, 'noPhotoBig.png')) {
+        if (\Str::contains($url, 'noPhotoBig.png') || is_null($url)) {
             return 'https://photos.car24.bg/assets/images/nophoto_490x341.svg';
         }
 
         if (! \Str::isUrl($url)) {
-            return "https://$url";
+            return "https:$url";
         }
 
         return $url;

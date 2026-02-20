@@ -24,6 +24,7 @@ class Deduplication
         }
 
         if (! Str::isUrl($imageUrl) && ! Str::contains($imageUrl, 'https')) {
+            $imageUrl = ltrim($imageUrl, '/');
             $imageUrl = "https://$imageUrl";
         }
 

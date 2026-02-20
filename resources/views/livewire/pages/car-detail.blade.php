@@ -222,9 +222,9 @@ class extends Component {
         {{-- Meta Info --}}
         <div class="border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Добавено: {{ $carListing->created_at->format('d.m.Y H:i') }}
+                Добавено: {{ $carListing->created_at->timezone('Europe/Sofia')->format('d.m.Y H:i') }}
                 @if($carListing->updated_at->gt($carListing->created_at))
-                    | Обновено: {{ $carListing->updated_at->format('d.m.Y H:i') }}
+                    | Обновено: {{ $carListing->updated_at->timezone('Europe/Sofia')->format('d.m.Y H:i') }}
                 @endif
             </p>
         </div>
