@@ -13,4 +13,6 @@ class LogChannels
     public const SCRAPING_AUTO = 'autobg';
 
     public const SCRAPING_JOB = 'scraping-job';
+
+    public const DEDUPLICATION = 'deduplication';
 }

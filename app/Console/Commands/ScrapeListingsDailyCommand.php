@@ -48,14 +48,11 @@ class ScrapeListingsDailyCommand extends Command
 
     public function scrapeMobileBg(): void
     {
-       $this->scrapeDailyListings(MobileBgScraper::class);
+        $this->scrapeDailyListings(MobileBgScraper::class);
     }
 
     /**
      * Scrape newest results.
-     *
-     * @param  string  $scraper_class
-     * @return void
      */
     public function scrapeDailyListings(string $scraper_class): void
     {

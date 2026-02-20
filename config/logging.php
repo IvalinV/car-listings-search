@@ -166,6 +166,14 @@ return [
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
+
+        \App\Misc\LogChannels::DEDUPLICATION => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/deduplication.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
     ],
 
 ];

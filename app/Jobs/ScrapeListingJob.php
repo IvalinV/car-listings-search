@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Misc\LogChannels;
 use App\Models\CarListing;
+use App\Services\Deduplication;
 use App\Services\Scrapers\CarsBgScraper;
 use App\Services\Scrapers\Scraper;
 use Illuminate\Bus\Queueable;
@@ -16,6 +17,15 @@ use Illuminate\Support\Arr;
 class ScrapeListingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 5;
+
+    public int $timeout = 180;
+
+    public function backoff(): array
+    {
+        return [30, 60, 120];
+    }
 
     public function __construct(
         private readonly string $scraper_class,
@@ -60,11 +70,16 @@ class ScrapeListingJob implements ShouldQueue
                 ? $scraper->extractPrice(Arr::get($record, 'price'))['eur']
                 : $record['price'];
 
-            $uuid = hash('sha256', "$mileage $year $fuel_type");
+            $image_url = Arr::get($record, 'image');
+
+            $uuid = Deduplication::make($image_url, [
+                'mileage' => $mileage, 'year' => $year, 'fuel_type' => $fuel_type, 'price' => $price,
+            ]);
+
             $listing = CarListing::where('fingerprint', $uuid)->first();
             $sources = $listing ? $listing->source_urls : [];
 
-            if(! in_array($source_url, $sources)) {
+            if (! in_array($source_url, $sources)) {
                 $sources[] = $source_url;
             }
 
@@ -78,9 +93,17 @@ class ScrapeListingJob implements ShouldQueue
                 'mileage' => $mileage,
                 'location' => Arr::get($record, 'location'),
                 'transmission' => Arr::get($record, 'params.transmission'),
-                'image_url' => Arr::get($record, 'image'),
+                'image_url' => $image_url,
                 'source_urls' => json_encode($sources),
             ], 'fingerprint');
         }
+    }
+
+    /**
+     * Handle a job failure.
+     */
+    public function failed(?\Throwable $exception): void
+    {
+        \Log::channel(LogChannels::SCRAPING_JOB)->error("Scraping job exception: {$exception->getMessage()}");
     }
 }

@@ -36,7 +36,7 @@ class Car24Scraper extends Scraper
                 'currency' => \Arr::get($item, 'currency'),
                 'link' => 'https://car24.bg'.\Arr::get($item, 'idalink'),
                 'description' => $this->generateDescription($item),
-                'image' => $image ? 'https://'.ltrim($image, '/') : $image,
+                'image' => $this->getImage($image),
                 'source' => 'car24.bg',
                 'params' => [
                     'production_year' => \Arr::get($item, 'year'),
@@ -67,5 +67,18 @@ class Car24Scraper extends Scraper
         $modification = \Arr::get($item, 'modification');
 
         return "$month $year, $modification, $location, $mileage км";
+    }
+
+    public function getImage($url) : string
+    {
+        if (\Str::contains($url, 'noPhotoBig.png')) {
+            return 'https://photos.car24.bg/assets/images/nophoto_490x341.svg';
+        }
+
+        if (! \Str::isUrl($url)) {
+            return "https://$url";
+        }
+
+        return $url;
     }
 }

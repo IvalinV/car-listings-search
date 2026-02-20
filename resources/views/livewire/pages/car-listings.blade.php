@@ -152,18 +152,25 @@ class extends Component {
     #[Computed]
     public function locations(): array
     {
-        return CarListing::query()
+        $query = CarListing::query()
             ->whereNotNull('location')
             ->where('location', '!=', '')
             ->distinct()
             ->pluck('location')
-            ->sort()
-            ->values()
-            ->toArray();
+            ->sort();
+
+       return $query->map(function (string $item, int $key) {
+           $result = explode(',', $item);
+
+           return count($result) > 1  ? \Arr::get($result, 1) : \Arr::first($result);
+       })
+           ->values()
+           ->unique()
+           ->toArray();
     }
 
     #[Computed]
-    public function listings()
+    public function listings(): \Illuminate\Pagination\LengthAwarePaginator|array
     {
         return CarListing::query()
             ->where('is_active', true)
@@ -173,7 +180,7 @@ class extends Component {
             }))
             ->when($this->fuelType, fn ($q) => $q->where('fuel_type', $this->fuelType))
             ->when($this->transmission, fn ($q) => $q->where('transmission', $this->transmission))
-            ->when($this->location, fn ($q) => $q->where('location', $this->location))
+            ->when($this->location, fn ($q) => $q->where('location', 'LIKE', "%$this->location%"))
             ->when($this->minPrice, fn ($q) => $q->where('price', '>=', $this->minPrice))
             ->when($this->maxPrice, fn ($q) => $q->where('price', '<=', $this->maxPrice))
             ->when($this->minYear, fn ($q) => $q->where('year', '>=', $this->minYear))
@@ -284,7 +291,6 @@ class extends Component {
                         @endforeach
                     </select>
                 </div>
-
                 {{-- Location --}}
                 <div>
                     <label for="location" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Местоположение</label>

@@ -54,7 +54,7 @@ class Scraper implements ScraperInterface
          * 2. Extract Mileage
          * Handles numbers with spaces (e.g., "48 900") followed by "км"
          */
-        $mileage = null;
+        $mileage = 0;
         if (preg_match('/([\d\s]+)\s*км/u', $input, $mileageMatch)) {
             // Remove spaces to get a clean integer
             $mileage = (int) str_replace(' ', '', $mileageMatch[1]);
