@@ -11,9 +11,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if ($this->app->isProduction()) {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
-        }
     }
 
     /**
