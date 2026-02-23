@@ -19,7 +19,7 @@ class Deduplication
      */
     public static function make(?string $imageUrl, ?array $params = null): string
     {
-        if (blank($imageUrl)) {
+        if (blank($imageUrl) || Str::contains('noPhoto', $imageUrl)) {
             return self::paramsHash($params);
         }
 

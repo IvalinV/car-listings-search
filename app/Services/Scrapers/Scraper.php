@@ -12,6 +12,7 @@ class Scraper implements ScraperInterface
         'Газ' => 'Gas',
         'Хибрид' => 'Hybrid',
         'Електрически' => 'Electric',
+        'Електричество' => 'Electric',
         'Плъг ин Хибрид' => 'Plugin Hybrid',
     ];
 
