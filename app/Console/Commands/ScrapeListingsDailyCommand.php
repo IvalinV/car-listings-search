@@ -15,7 +15,7 @@ class ScrapeListingsDailyCommand extends Command
 
     protected $description = 'Scrape daily listings';
 
-    protected string $type = 'daily';
+    protected string $type = 'daily-update';
 
     private int $maxPages = 10;
     private int $chunkSize = 1;
@@ -64,9 +64,9 @@ class ScrapeListingsDailyCommand extends Command
             // Dispatch a job for range 1-10, 11-20, etc.
             ScrapeListingJob::dispatch($scraper_class, from_page: $startPage, to_page: $endPage, type: $this->type);
 
-            $this->line("Dispatched newest listing batch: Page $startPage to $endPage");
+            $this->line("Dispatched newest existing batch: Page $startPage to $endPage");
         }
 
-        $this->info('All Daily 10 batch jobs are in the queue.');
+        $this->info('All Daily Update 10 batch jobs are in the queue.');
     }
 }

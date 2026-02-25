@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Misc\LogChannels;
 use App\Models\CarListing;
 use Illuminate\Console\Command;
-use PHPUnit\Event\Code\Throwable;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CleanUpRemovedListingsCommand extends Command
 {
@@ -14,28 +16,28 @@ class CleanUpRemovedListingsCommand extends Command
 
     public function handle(): void
     {
-        $this->info('Listings clean up started...');
+        Log::channel(LogChannels::LISTINGS)->info('Listings clean up started...');
         CarListing::query()
             ->chunk(1000, function ($carListings) use (&$results) {
                 foreach ($carListings as $carListing) {
-                    $this->info("Current processing $carListing->title - $carListing->fingerprint");
+                    Log::channel(LogChannels::LISTINGS)->info("Current processing $carListing->title - $carListing->fingerprint");
                     foreach ($carListing->source_urls as $url){
                         try {
-                            $removed = \Illuminate\Support\Facades\Http::get($url)->notFound();
+                            $removed = Http::get($url)->notFound();
 
                             if ($removed) {
                                 $carListing->delete();
-                                $this->info("Listing $carListing->fingerprint removed.");
+                                Log::channel(LogChannels::LISTINGS)->info("Listing $carListing->fingerprint removed.");
                             }
 
                             sleep(1);
                         } catch (\Throwable $exception) {
-                            \Log::error($exception->getMessage());
+                            Log::channel(LogChannels::LISTINGS)->error($exception->getMessage());
                         }
                     }
                 }
             });
 
-        $this->info('Listings clean up completed.');
+        Log::channel(LogChannels::LISTINGS)->info('Listings clean up completed.');
     }
 }

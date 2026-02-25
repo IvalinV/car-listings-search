@@ -15,4 +15,6 @@ class LogChannels
     public const SCRAPING_JOB = 'scraping-job';
 
     public const DEDUPLICATION = 'deduplication';
+
+    public const LISTINGS = 'listings';
 }
