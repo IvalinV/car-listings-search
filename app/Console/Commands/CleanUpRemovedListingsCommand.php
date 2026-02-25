@@ -18,7 +18,7 @@ class CleanUpRemovedListingsCommand extends Command
     {
         Log::channel(LogChannels::LISTINGS)->info('Listings clean up started...');
         CarListing::query()
-            ->chunk(1000, function ($carListings) use (&$results) {
+            ->chunkbyId(100, function ($carListings) use (&$results) {
                 foreach ($carListings as $carListing) {
                     Log::channel(LogChannels::LISTINGS)->info("Current processing $carListing->title - $carListing->fingerprint");
                     foreach ($carListing->source_urls as $url){
