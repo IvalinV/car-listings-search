@@ -91,7 +91,7 @@ class ScrapeListingJob implements ShouldQueue
                 'year' => $year,
                 'fuel_type' => $fuel_type,
                 'mileage' => $mileage,
-                'location' => Arr::get($record, 'params.location'),
+                'location' => Arr::get($record, 'location'),
                 'transmission' => Arr::get($record, 'params.transmission'),
                 'image_url' => $image_url,
                 'source_urls' => json_encode($sources),

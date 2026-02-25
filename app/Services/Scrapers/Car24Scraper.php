@@ -38,6 +38,7 @@ class Car24Scraper extends Scraper
                 'link' => 'https://car24.bg'.Arr::get($item, 'idalink'),
                 'description' => $this->generateDescription($item),
                 'image' => $this->getImage($image),
+                'location' => Arr::get($item, 'locat'),
                 'source' => 'car24.bg',
                 'params' => [
                     'production_year' => Arr::get($item, 'year'),
@@ -47,7 +48,6 @@ class Car24Scraper extends Scraper
                     'engine_cc' => null,
                     'euro_standard' => null,
                     'last_updated_at' => null,
-                    'location' => Arr::get($item, 'locat'),
                     'transmission' => null,
                 ],
             ];

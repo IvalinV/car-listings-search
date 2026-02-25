@@ -63,6 +63,7 @@ class AutoBgScraper extends Scraper
                     'price' => $priceText ?: 'Contact for price',
                     'link' => $link,
                     'description' => trim($node->filter('.info')->text('')),
+                    'location' => $this->extractLocation($node->filter('.info')->text('')),
                     'image' => $image,
                     'source' => 'auto.bg',
                     'params' => $this->extractListingParams(trim($node->filter('.info')->text(''))),
@@ -73,5 +74,22 @@ class AutoBgScraper extends Scraper
         });
 
         return $results;
+    }
+
+    /**
+     * Extract location from description string.
+     *
+     * @param $string
+     * @return string|null
+     */
+    public function extractLocation($string): ?string
+    {
+        $pattern = '/(?:регион\s|Намира се в\s)(.*?)(?=\d{2}:\d{2}|\.|$| часа)/u';
+
+        if (preg_match($pattern, $string, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
     }
 }
