@@ -7,9 +7,11 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class Car24Scraper extends Scraper
 {
+    private string $url_single_listing = "https://api.car24.bg/mobile_api/adverts/loadbyid";
     public function scrape($page = 1)
     {
         $response = Http::withHeaders([
@@ -52,6 +54,30 @@ class Car24Scraper extends Scraper
                 ],
             ];
         });
+    }
+
+    /**
+     * Get single listing.
+     *
+     * @param $url
+     * @return array|mixed|null
+     * @throws \Illuminate\Http\Client\ConnectionException
+     */
+    public function getListing($url)
+    {
+        preg_match('/[\\\\\/]obiava[\\\\\/](\d+)(?=[\\\\\/]|$)/', $url, $matches);
+
+        $id = $matches[1] ?? null;
+        $title = Str::afterLast($url, '\\');;
+        $title = ltrim($title, '\\');
+
+        $response = Http::acceptJson()->withQueryParameters([
+            'ida' => $id,
+            'title' => $title,
+        ])->get($this->url_single_listing);
+
+
+        return $response->status() !== 404 ? $response->json('data.advert') : null;
     }
 
     /**
