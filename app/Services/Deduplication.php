@@ -29,7 +29,7 @@ class Deduplication
         }
 
         try {
-            $response = Http::connectTimeout(5)->timeout(10)->get($imageUrl);
+            $response = Http::retry(3)->connectTimeout(5)->timeout(10)->get($imageUrl);
 
             $hasher = new ImageHash(new PerceptualHash);
             $hash = $hasher->hash($response->body());
