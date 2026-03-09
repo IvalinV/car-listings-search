@@ -62,7 +62,7 @@ class ScrapeListingsDailyCommand extends Command
             $endPage = $startPage + ($this->chunkSize - 1);
 
             // Dispatch a job for range 1-10, 11-20, etc.
-            ScrapeListingJob::dispatch($scraper_class, from_page: $startPage, to_page: $endPage, type: $this->type);
+            ScrapeListingJob::dispatch($scraper_class, from_page: $startPage, to_page: $endPage, type: $this->type)->onQueue('scrape-listings');
 
             $this->line("Dispatched newest existing batch: Page $startPage to $endPage");
         }
