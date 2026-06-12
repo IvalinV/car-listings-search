@@ -32,7 +32,7 @@ class AutoBgScraper extends Scraper
         $crawler = new Crawler($html);
         $results = [];
 
-        $crawler->filter('.resultItem')->each(function (Crawler $node) use (&$results, $page) {
+        $crawler->filter('my-advert-l')->each(function (Crawler $node) use (&$results, $page) {
             try {
                 $image = null;
                 $imgNode = $node->filter('.photo img');
@@ -44,29 +44,41 @@ class AutoBgScraper extends Scraper
                 }
 
                 $link = null;
-                $linkNode = $node->filter('.head .link a');
+                $linkNode = $node->filter('a[href]');
                 if ($linkNode->count() > 0) {
                     $link = $linkNode->attr('href');
+                    if ($link && str_starts_with($link, '/')) {
+                        $link = 'https://www.auto.bg'.$link;
+                    }
                 }
 
+                $titleNode = $node->filter('.title');
+                $title = $titleNode->count() > 0 ? trim($titleNode->text('')) : 'N/A';
+
                 $priceText = '';
-                $priceNode = $node->filter('.head .price');
+                $priceNode = $node->filter('.price');
                 if ($priceNode->count() > 0) {
                     $priceText = trim(preg_replace('/\s+/', ' ', $priceNode->text('')));
                     // Remove the VAT note if present
-                    $priceText = preg_replace('/Не се начислява ДДС/', '', $priceText);
+                    $priceText = preg_replace('/Цената е с включено ДДС|Не се начислява ДДС/u', '', $priceText);
                     $priceText = trim($priceText);
                 }
 
+                $locationNode = $node->filter('.location');
+                $location = $locationNode->count() > 0 ? trim(preg_replace('/\s+/', ' ', $locationNode->text(''))) : null;
+
+                $infoNode = $node->filter('.info');
+                $infoText = $infoNode->count() > 0 ? trim($infoNode->text('')) : '';
+
                 $results[] = [
-                    'title' => $linkNode->count() > 0 ? trim($linkNode->text('')) : 'N/A',
+                    'title' => $title,
                     'price' => $priceText ?: 'Contact for price',
                     'link' => $link,
-                    'description' => trim($node->filter('.info')->text('')),
-                    'location' => $this->extractLocation($node->filter('.info')->text('')),
+                    'description' => $infoText,
+                    'location' => $location,
                     'image' => $image,
                     'source' => 'auto.bg',
-                    'params' => $this->extractListingParams(trim($node->filter('.info')->text(''))),
+                    'params' => $this->extractListingParams($infoText),
                 ];
             } catch (\Exception $e) {
                 Log::channel(LogChannels::SCRAPING_AUTO)->error("Failed to scrape auto.bg ads for page $page - {$e->getMessage()}");
@@ -74,22 +86,5 @@ class AutoBgScraper extends Scraper
         });
 
         return $results;
-    }
-
-    /**
-     * Extract location from description string.
-     *
-     * @param $string
-     * @return string|null
-     */
-    public function extractLocation($string): ?string
-    {
-        $pattern = '/(?:регион\s|Намира се в\s)(.*?)(?=\d{2}:\d{2}|\.|$| часа)/u';
-
-        if (preg_match($pattern, $string, $matches)) {
-            return trim($matches[1]);
-        }
-
-        return null;
     }
 }
