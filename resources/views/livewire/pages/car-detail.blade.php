@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CarListing;
+use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -18,9 +19,76 @@ class extends Component {
         $this->carListing = $carListing;
     }
 
+    public function render(): View
+    {
+        return $this->view()->title($this->getTitle());
+    }
+
     public function getTitle(): string
     {
         return $this->carListing->title ?? 'Детайли за автомобил';
+    }
+
+    public function metaDescription(): string
+    {
+        $car = $this->carListing;
+
+        $facts = array_filter([
+            $car->year ? $car->year.' г.' : null,
+            $car->mileage ? number_format($car->mileage, 0, ',', ' ').' км' : null,
+            $car->fuel_type ? __("fuels.$car->fuel_type") : null,
+            number_format((float) $car->price, 0, ',', ' ').' EUR',
+            $car->location,
+        ]);
+
+        return ($car->title ? $car->title.' — ' : '').implode(', ', $facts).'. Вижте обявата в AutoSearch.';
+    }
+
+    /**
+     * Schema.org Car + Offer structured data for rich results.
+     *
+     * @return array<string, mixed>
+     */
+    public function structuredData(): array
+    {
+        $car = $this->carListing;
+
+        $data = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Car',
+            'name' => $car->title,
+            'vehicleModelDate' => (string) $car->year,
+            'mileageFromOdometer' => [
+                '@type' => 'QuantitativeValue',
+                'value' => $car->mileage,
+                'unitCode' => 'KMT',
+            ],
+            'offers' => [
+                '@type' => 'Offer',
+                'price' => number_format((float) $car->price, 2, '.', ''),
+                'priceCurrency' => 'EUR',
+                'availability' => 'https://schema.org/InStock',
+                'url' => route('car-detail', $car),
+            ],
+        ];
+
+        if ($car->description) {
+            $data['description'] = $car->description;
+        }
+
+        if ($car->image_url) {
+            $data['image'] = $this->formatImageUrl($car->image_url);
+        }
+
+        if ($car->fuel_type) {
+            $data['fuelType'] = $car->fuel_type;
+        }
+
+        if ($car->transmission) {
+            $data['vehicleTransmission'] = $car->transmission;
+        }
+
+        return $data;
     }
 
     public function getSource($url)
@@ -48,7 +116,22 @@ class extends Component {
 ?>
 
 <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-    @section('title', $this->getTitle())
+    @push('seo')
+        <link rel="canonical" href="{{ route('car-detail', $carListing) }}">
+        <meta name="description" content="{{ $this->metaDescription() }}">
+        <meta property="og:type" content="product">
+        <meta property="og:title" content="{{ $carListing->title }}">
+        <meta property="og:description" content="{{ $this->metaDescription() }}">
+        <meta property="og:url" content="{{ route('car-detail', $carListing) }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $carListing->title }}">
+        <meta name="twitter:description" content="{{ $this->metaDescription() }}">
+        @if($carListing->image_url)
+            <meta property="og:image" content="{{ $this->formatImageUrl($carListing->image_url) }}">
+            <meta name="twitter:image" content="{{ $this->formatImageUrl($carListing->image_url) }}">
+        @endif
+        <script type="application/ld+json">{!! json_encode($this->structuredData(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+    @endpush
 
     {{-- Back Link --}}
     <a

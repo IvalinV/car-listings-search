@@ -214,6 +214,29 @@ class extends Component {
 ?>
 
 <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    @php
+        $metaDescription = 'Хиляди обяви за автомобили втора ръка и нови от cars.bg, mobile.bg, auto.bg и car24.bg — търсене и филтриране на едно място.';
+    @endphp
+
+    @push('seo')
+        <link rel="canonical" href="{{ route('car-listings') }}">
+        <meta name="description" content="{{ $metaDescription }}">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="Търсене на автомобили - AutoSearch">
+        <meta property="og:description" content="{{ $metaDescription }}">
+        <meta property="og:url" content="{{ route('car-listings') }}">
+        <meta property="og:image" content="{{ asset('images/marketing-image.png') }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="Търсене на автомобили - AutoSearch">
+        <meta name="twitter:description" content="{{ $metaDescription }}">
+        <meta name="twitter:image" content="{{ asset('images/marketing-image.png') }}">
+    @endpush
+
+    {{-- Page Heading --}}
+    <h1 class="mb-6 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">
+        Обяви за автомобили втора ръка и нови
+    </h1>
+
     {{-- Mobile Filter Toggle --}}
     <div class="mb-4 lg:hidden">
         <button

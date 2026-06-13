@@ -1,19 +1,15 @@
 <?php
 
-namespace Tests\Feature;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use function Pest\Laravel\get;
 
-class ExampleTest extends TestCase
-{
-    /**
-     * A basic test example.
-     */
-    public function test_the_application_returns_a_successful_response(): void
-    {
-        $response = $this->get('/');
+uses(RefreshDatabase::class);
 
-        $response->assertStatus(200);
-    }
-}
+it('loads the listings homepage successfully', function (): void {
+    $this->withoutVite();
+
+    get('/')
+        ->assertOk()
+        ->assertSee('Обяви за автомобили', false);
+});
