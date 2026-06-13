@@ -67,18 +67,24 @@ class AutoBgScraper extends Scraper
                 $locationNode = $node->filter('.location');
                 $location = $locationNode->count() > 0 ? trim(preg_replace('/\s+/', ' ', $locationNode->text(''))) : null;
 
-                $infoNode = $node->filter('.info');
-                $infoText = $infoNode->count() > 0 ? trim($infoNode->text('')) : '';
+                $dateNode = $node->filter('.date');
+                $date = $dateNode->count() > 0 ? trim(preg_replace('/\s+/', ' ', $dateNode->text(''))) : null;
+
+                $pills = $node->filter('.pills .pill')->each(
+                    fn (Crawler $pill): string => trim(preg_replace('/\s+/', ' ', $pill->text('')))
+                );
+
+                $description = implode(' · ', array_filter([...$pills, $location, $date]));
 
                 $results[] = [
                     'title' => $title,
                     'price' => $priceText ?: 'Contact for price',
                     'link' => $link,
-                    'description' => $infoText,
+                    'description' => $description,
                     'location' => $location,
                     'image' => $image,
                     'source' => 'auto.bg',
-                    'params' => $this->extractListingParams($infoText),
+                    'params' => $this->extractListingParams($description),
                 ];
             } catch (\Exception $e) {
                 Log::channel(LogChannels::SCRAPING_AUTO)->error("Failed to scrape auto.bg ads for page $page - {$e->getMessage()}");
