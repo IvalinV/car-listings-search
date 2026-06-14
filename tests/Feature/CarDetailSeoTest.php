@@ -2,6 +2,7 @@
 
 use App\Models\CarListing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\get;
 
@@ -80,4 +81,21 @@ it('builds a slug-based URL but still resolves by the leading id', function (): 
     get('/cars/'.$car->id.'-bmw-x5-xdrive40i')->assertOk(); // canonical slug URL
     get('/cars/'.$car->id)->assertOk();                     // legacy id-only URL still works
     get('/cars/'.$car->id.'-stale-old-slug')->assertOk();   // slug is cosmetic, id wins
+});
+
+it('binds the slug route by integer id, never the raw slug string', function (): void {
+    // SQLite silently coerces "123-foo" to 123, but Postgres throws 22P02. So instead
+    // of relying on the DB, assert the slug string never reaches a query binding.
+    $car = CarListing::factory()->create(['title' => 'BMW X5 xDrive40i']);
+    $slug = $car->id.'-bmw-x5-xdrive40i';
+
+    $bindings = [];
+    DB::listen(function ($query) use (&$bindings): void {
+        $bindings = array_merge($bindings, $query->bindings);
+    });
+
+    get('/cars/'.$slug)->assertOk();
+
+    expect($bindings)->toContain($car->id)   // resolved by integer id
+        ->not->toContain($slug);             // raw slug never bound to the bigint column
 });
