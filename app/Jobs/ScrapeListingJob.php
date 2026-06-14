@@ -7,6 +7,7 @@ use App\Models\CarListing;
 use App\Services\Deduplication;
 use App\Services\Scrapers\CarsBgScraper;
 use App\Services\Scrapers\Scraper;
+use App\Services\SitemapCache;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -96,6 +97,10 @@ class ScrapeListingJob implements ShouldQueue
                 'image_url' => $image_url,
                 'source_urls' => json_encode($sources),
             ], 'fingerprint');
+        }
+
+        if ($results !== []) {
+            SitemapCache::flush();
         }
     }
 
