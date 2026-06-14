@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use Database\Factories\CarListingFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class CarListing extends Model
 {
+    /** @use HasFactory<CarListingFactory> */
+    use HasFactory;
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -15,6 +21,25 @@ class CarListing extends Model
             'source_urls' => 'array',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * SEO-friendly route key: "{id}-{title-slug}" (e.g. 1737405-bmw-x5-xdrive40i).
+     */
+    public function getRouteKey(): string
+    {
+        $slug = Str::slug((string) $this->title);
+
+        return $slug === '' ? (string) $this->getKey() : $this->getKey().'-'.$slug;
+    }
+
+    /**
+     * Resolve route bindings by the leading numeric id, ignoring the cosmetic slug,
+     * so both "/cars/123" and "/cars/123-anything" resolve and old links keep working.
+     */
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        return $this->where($field ?? $this->getKeyName(), (int) Str::before((string) $value, '-'))->first();
     }
 
     public function getPriceBGNAttribute(): float
