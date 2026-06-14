@@ -3,9 +3,12 @@
 namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
+use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\DomCrawler\Crawler;
 
 class AutoBgScraper extends Scraper
@@ -74,7 +77,7 @@ class AutoBgScraper extends Scraper
                     fn (Crawler $pill): string => trim(preg_replace('/\s+/', ' ', $pill->text('')))
                 );
 
-                $description = implode(' · ', array_filter([...$pills, $location, $date]));
+                $description = implode(' · ', array_filter([...$pills, $location]));
 
                 $results[] = [
                     'title' => $title,
@@ -83,6 +86,7 @@ class AutoBgScraper extends Scraper
                     'description' => $description,
                     'location' => $location,
                     'image' => $image,
+                    'published_at' => $this->getPublishedDate($date),
                     'source' => 'auto.bg',
                     'params' => $this->extractListingParams($description),
                 ];
@@ -92,5 +96,50 @@ class AutoBgScraper extends Scraper
         });
 
         return $results;
+    }
+
+    /**
+     * A live auto.bg listing returns 200 on its /obiava/ URL. A removed one is
+     * redirected (301) to the brand/model category page (/obiavi/...), and a
+     * never-existed ID returns a genuine 404.
+     */
+    public function isListingRemoved(string $url): bool
+    {
+        $response = Http::withoutRedirecting()
+            ->withHeaders($this->browserHeaders())
+            ->get($url);
+
+        if ($response->notFound()) {
+            return true;
+        }
+
+        return $response->redirect()
+            && str_contains((string) $response->header('Location'), '/obiavi/');
+    }
+
+    /**
+     * Parse the auto.bg listing date as written.
+     *
+     * Handles both "11:37 часа от днес" (relative to today) and
+     * "23:50 часа от 13.06.2026" (absolute). The value is stored as-is;
+     * timezone-aware formatting is applied on the front end.
+     */
+    public function getPublishedDate(?string $timeString): ?Carbon
+    {
+        if (! $timeString) {
+            return null;
+        }
+
+        $exploded = explode(' ', $timeString);
+        $time = Arr::get($exploded, 0);
+        $date = Arr::get($exploded, 3);
+
+        try {
+            return Str::contains((string) $date, 'днес')
+                ? Carbon::createFromFormat('H:i', $time)
+                : Carbon::createFromFormat('d.m.Y H:i', "$date $time");
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

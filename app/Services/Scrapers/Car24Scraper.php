@@ -3,6 +3,8 @@
 namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
+use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -11,7 +13,8 @@ use Illuminate\Support\Str;
 
 class Car24Scraper extends Scraper
 {
-    private string $url_single_listing = "https://api.car24.bg/mobile_api/adverts/loadbyid";
+    private string $url_single_listing = 'https://api.car24.bg/mobile_api/adverts/loadbyid';
+
     public function scrape($page = 1)
     {
         $response = Http::withHeaders([
@@ -32,6 +35,7 @@ class Car24Scraper extends Scraper
         return Arr::map($results, function ($item) {
             $images_array = Arr::get($item, 'bigPics', []);
             $image = count($images_array) ? Arr::first($item['bigPics'], fn ($value) => ! is_null($value)) : null;
+            $published_at = $this->getPublishedDate(Arr::get($item, 'pubtime'));
 
             return [
                 'title' => Arr::get($item, 'title'),
@@ -42,6 +46,7 @@ class Car24Scraper extends Scraper
                 'image' => $this->getImage($image),
                 'location' => Arr::get($item, 'locat'),
                 'source' => 'car24.bg',
+                'published_at' => $published_at,
                 'params' => [
                     'production_year' => Arr::get($item, 'year'),
                     'mileage' => Arr::get($item, 'km'),
@@ -49,7 +54,6 @@ class Car24Scraper extends Scraper
                     'fuel' => $this->determineFuelType(Arr::get($item, 'engine_type')),
                     'engine_cc' => null,
                     'euro_standard' => null,
-                    'last_updated_at' => null,
                     'transmission' => null,
                 ],
             ];
@@ -57,27 +61,52 @@ class Car24Scraper extends Scraper
     }
 
     /**
+     * car24.bg soft-deletes: the public /obiava/ URL 301s a removed listing to
+     * a category page (HTTP 200), so the HTML is unreliable. The mobile API
+     * returns the advert only while it is live (data.advert is null once the
+     * listing is removed or never existed), making it the authoritative check.
+     *
+     * A transient API failure (5xx, rate limit) bubbles up as an exception
+     * rather than being misread as a removed listing.
+     *
+     * @throws ConnectionException|RequestException
+     */
+    public function isListingRemoved(string $url): bool
+    {
+        return is_null($this->getListing($url));
+    }
+
+    /**
      * Get single listing.
      *
-     * @param $url
-     * @return array|mixed|null
-     * @throws \Illuminate\Http\Client\ConnectionException
+     * Returns the advert payload while the listing is live, null once it has
+     * been removed (HTTP 404, or HTTP 200 with no advert). Any other error
+     * status is thrown so callers do not mistake a transient failure for a
+     * removed listing.
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws ConnectionException|RequestException
      */
-    public function getListing($url)
+    public function getListing($url): ?array
     {
         preg_match('/[\\\\\/]obiava[\\\\\/](\d+)(?=[\\\\\/]|$)/', $url, $matches);
 
         $id = $matches[1] ?? null;
-        $title = Str::afterLast($url, '\\');;
-        $title = ltrim($title, '\\');
+        $title = Str::afterLast($url, '/');
 
         $response = Http::acceptJson()->withQueryParameters([
             'ida' => $id,
             'title' => $title,
         ])->get($this->url_single_listing);
 
+        if ($response->status() === 404) {
+            return null;
+        }
 
-        return $response->status() !== 404 ? $response->json('data.advert') : null;
+        $response->throw();
+
+        return $response->json('data.advert');
     }
 
     /**
@@ -96,7 +125,7 @@ class Car24Scraper extends Scraper
         return "$month $year, $modification, $location, $mileage км";
     }
 
-    public function getImage($url) : string
+    public function getImage($url): string
     {
         if (\Str::contains($url, 'noPhotoBig.png') || is_null($url)) {
             return 'https://photos.car24.bg/assets/images/nophoto_490x341.svg';
@@ -107,5 +136,23 @@ class Car24Scraper extends Scraper
         }
 
         return $url;
+    }
+
+    /**
+     * Parse the car24.bg "pubtime" (e.g. "12:30 на 12.06.2026") as written.
+     *
+     * The value is stored as-is; timezone-aware formatting happens on the front end.
+     */
+    public function getPublishedDate(?string $dateString): ?Carbon
+    {
+        if (! $dateString) {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('H:i d.m.Y', str_replace('на ', '', $dateString));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

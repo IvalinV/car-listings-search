@@ -13,13 +13,27 @@ use Jenssegers\ImageHash\Implementations\PerceptualHash;
 class Deduplication
 {
     /**
+     * Placeholder "no photo" images each platform serves when a listing has no
+     * picture. These must never be perceptually hashed, otherwise every
+     * photo-less listing collapses into a single colliding record.
+     *
+     * - "noPhoto" matches mobile.bg / car24.bg / auto.bg (nophoto_490x341.svg)
+     *   and car24.bg's raw "noPhotoBig.png".
+     * - cars.bg uses a distinct "car.jpg" placeholder with no "nophoto" token.
+     */
+    private const PLACEHOLDER_IMAGE_PATTERNS = [
+        'noPhoto',
+        'assets.cars.bg/desktop/images/car.jpg',
+    ];
+
+    /**
      * Create unique hash to be used for removing duplicate entries.
      *
      * @param  array<string, mixed>|null  $params
      */
     public static function make(?string $imageUrl, ?array $params = null): string
     {
-        if (blank($imageUrl) || Str::contains($imageUrl, 'noPhoto', true)) {
+        if (blank($imageUrl) || Str::contains($imageUrl, self::PLACEHOLDER_IMAGE_PATTERNS, true)) {
             return self::paramsHash($params);
         }
 
@@ -45,6 +59,10 @@ class Deduplication
     /**
      * Create unique hash with car listing parameters.
      *
+     * Used only when there is no usable image. Price is included alongside
+     * mileage/year/fuel because those three alone are too coarse and merge
+     * unrelated cars; price sharply narrows the bucket.
+     *
      * @param  array<string, mixed>|null  $params
      */
     private static function paramsHash(?array $params): string
@@ -52,7 +70,8 @@ class Deduplication
         $mileage = Arr::get($params, 'mileage');
         $year = Arr::get($params, 'year');
         $fuelType = Arr::get($params, 'fuel_type');
+        $price = Arr::get($params, 'price');
 
-        return hash('sha256', "$mileage $year $fuelType");
+        return hash('sha256', "$mileage $year $fuelType $price");
     }
 }

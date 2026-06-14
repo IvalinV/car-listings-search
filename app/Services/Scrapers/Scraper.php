@@ -3,6 +3,7 @@
 namespace App\Services\Scrapers;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class Scraper implements ScraperInterface
 {
@@ -21,6 +22,32 @@ class Scraper implements ScraperInterface
     public function scrape()
     {
         // TODO: Implement scrape() method.
+    }
+
+    /**
+     * Determine whether the listing at the given URL has been removed.
+     *
+     * The default treats a genuine 404 as removed; sources that soft-delete
+     * (redirect a removed listing to a category or "expired" page with a 200)
+     * override this with their own detection.
+     */
+    public function isListingRemoved(string $url): bool
+    {
+        return Http::withHeaders($this->browserHeaders())->get($url)->notFound();
+    }
+
+    /**
+     * Common browser-like headers shared across scraper requests.
+     *
+     * @return array<string, string>
+     */
+    public function browserHeaders(): array
+    {
+        return [
+            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language' => 'bg-BG,bg;q=0.9,en-US;q=0.8,en;q=0.7',
+        ];
     }
 
     /**

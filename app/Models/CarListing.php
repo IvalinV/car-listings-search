@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Database\Factories\CarListingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,7 +20,9 @@ class CarListing extends Model
     {
         return [
             'source_urls' => 'array',
+            'source_dates' => 'array',
             'is_active' => 'boolean',
+            'published_at' => 'datetime',
         ];
     }
 
@@ -45,6 +48,19 @@ class CarListing extends Model
     public function getPriceBGNAttribute(): float
     {
         return $this->price * 1.955883;
+    }
+
+    /**
+     * The earliest date the car was published on any source.
+     *
+     * Derived from the per-source `source_dates` map; the latest of those is
+     * already stored in the `published_at` column.
+     */
+    public function firstPublishedAt(): ?Carbon
+    {
+        $dates = collect($this->source_dates ?? [])->filter();
+
+        return $dates->isEmpty() ? null : Carbon::parse($dates->min());
     }
 
     public function scopeActive(Builder $query): Builder

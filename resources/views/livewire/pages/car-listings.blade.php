@@ -39,7 +39,7 @@ class extends Component {
     public string $location = '';
 
     #[Url]
-    public string $sortBy = 'created_at';
+    public string $sortBy = 'published_at';
 
     #[Url]
     public string $sortDirection = 'desc';
@@ -383,7 +383,7 @@ class extends Component {
                         id="sortBy"
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     >
-                        <option value="created_at">Дата на добавяне</option>
+                        <option value="created_at">Дата на публикуване</option>
                         <option value="price">Цена</option>
                         <option value="year">Година</option>
                         <option value="mileage">Пробег</option>
@@ -519,11 +519,35 @@ class extends Component {
                                     </span>
                                 </div>
 
-                                {{-- Source Badges --}}
-                                @if($car->source_urls && count($car->source_urls) > 0)
+                                {{-- Publication dates & per-source badges --}}
+                                @php($firstPublished = $car->firstPublishedAt())
+                                @if($car->source_dates && count($car->source_dates) > 0)
+                                    <div class="mt-3 border-t border-gray-100 pt-2 dark:border-gray-700">
+                                        @if($firstPublished)
+                                            <p class="mb-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                                Създадена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $firstPublished->format('d.m.Y') }}</span>
+                                                @if($car->published_at && $car->published_at->gt($firstPublished))
+                                                    · Обновена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $car->published_at->format('d.m.Y') }}</span>
+                                                @endif
+                                            </p>
+                                        @endif
+                                        <div class="flex flex-wrap gap-1.5">
+                                            @foreach($car->source_dates as $source => $date)
+                                                <span
+                                                    wire:key="src-{{ $car->id }}-{{ $source }}"
+                                                    class="inline-flex flex-col rounded bg-gray-100 px-2 py-1 leading-tight text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                                                >
+                                                    <span class="text-xs font-medium">{{ $source }}</span>
+                                                    <span class="text-[11px] text-gray-500 dark:text-gray-500">{{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}</span>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @elseif($car->source_urls && count($car->source_urls) > 0)
+                                    {{-- Records not yet re-scraped have no per-source dates: show plain badges. --}}
                                     <div class="mt-2 flex flex-wrap gap-1.5">
                                         @foreach($car->source_urls as $source => $url)
-                                            <span class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                            <span wire:key="srcurl-{{ $car->id }}-{{ $source }}" class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
                                                 {{ $this->getSource($url)}}
                                             </span>
                                         @endforeach

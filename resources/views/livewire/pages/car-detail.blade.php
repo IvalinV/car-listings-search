@@ -284,14 +284,22 @@ class extends Component {
             <div class="border-t border-gray-200 p-6 dark:border-gray-700">
                 <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Вижте пълната обява в:</h2>
                 <div class="flex flex-wrap gap-3">
-                    @foreach($carListing->source_urls as $source => $url)
+                    @foreach($carListing->source_urls as $url)
+                        @php($source = $this->getSource($url))
+                        @php($sourceDate = $carListing->source_dates[$source] ?? null)
                         <a
                             href="{{ $url }}"
                             target="_blank"
                             rel="noopener noreferrer"
+                            wire:key="source-{{ $loop->index }}"
                             class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                         >
-                            {{ $this->getSource($url) }}
+                            <span class="flex flex-col items-start leading-tight">
+                                <span>{{ $source }}</span>
+                                @if($sourceDate)
+                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ \Carbon\Carbon::parse($sourceDate)->format('d.m.Y') }}</span>
+                                @endif
+                            </span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
                                 <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
@@ -304,12 +312,18 @@ class extends Component {
 
         {{-- Meta Info --}}
         <div class="border-t border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
+            @php($firstPublished = $carListing->firstPublishedAt())
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Добавено: {{ $carListing->created_at->timezone('Europe/Sofia')->format('d.m.Y H:i') }}
-                @if($carListing->updated_at->gt($carListing->created_at))
-                    | Обновено: {{ $carListing->updated_at->timezone('Europe/Sofia')->format('d.m.Y H:i') }}
+                @if($firstPublished)
+                    Създадена: {{ $firstPublished->format('d.m.Y') }}
+                    @if($carListing->published_at && $carListing->published_at->gt($firstPublished))
+                        | Обновена: {{ $carListing->published_at->format('d.m.Y') }}
+                    @endif
+                @elseif($carListing->published_at)
+                    Публикувана: {{ $carListing->published_at->format('d.m.Y') }}
                 @endif
             </p>
         </div>
     </div>
 </div>
+

@@ -3,9 +3,11 @@
 namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
+use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\DomCrawler\Crawler;
 
 class CarsBgScraper extends Scraper
@@ -70,29 +72,44 @@ class CarsBgScraper extends Scraper
     }
 
     /**
-     * Parse the date when the listing was published.
+     * A live cars.bg listing returns 200 on its /offer/ URL. A removed one is
+     * redirected (302) to status_page.php (e.g. ?m=expired_job_err); cars.bg
+     * never returns a 404 for a removed listing.
      */
-    private function parseCreatedDate(string $input): string
+    public function isListingRemoved(string $url): bool
     {
-        // 1. Clean the string (remove trailing spaces and the comma)
+        $response = Http::withoutRedirecting()
+            ->withHeaders($this->browserHeaders())
+            ->get($url);
+
+        return $response->redirect()
+            && str_contains((string) $response->header('Location'), 'status_page.php');
+    }
+
+    /**
+     * Parse the cars.bg listing date as written.
+     *
+     * Handles "днес 14:25" (relative), "вчера" and absolute "d.m.y" dates.
+     * The value is stored as-is; timezone-aware formatting happens on the front end.
+     */
+    private function parseCreatedDate(string $input): ?Carbon
+    {
         $cleanInput = trim(str_replace(',', '', $input));
 
-        // 2. Check for the Bulgarian keyword "днес"
-        if (str_contains($cleanInput, 'днес')) {
-            // Extract the time part (14:25)
-            $timePart = trim(str_replace(['днес', 'вчера', 'нов внос'], '', $cleanInput));
-
-            // Create Carbon instance starting at today and setting the time
-            $date = ! empty($timePart) ? today()->setTimeFromTimeString($timePart) : null;
-        } else {
-            if (\Str::contains($cleanInput, 'вчера')) {
-                $date = \Carbon\Carbon::yesterday();
+        try {
+            if (str_contains($cleanInput, 'днес')) {
+                $timePart = trim(str_replace(['днес', 'вчера', 'нов внос'], '', $cleanInput));
+                $date = $timePart !== '' ? today()->setTimeFromTimeString($timePart) : null;
+            } elseif (Str::contains($cleanInput, 'вчера')) {
+                $date = Carbon::yesterday();
             } else {
-                $date = \Carbon\Carbon::createFromFormat('d.m.y', $cleanInput, 'Europe/Sofia');
+                $date = Carbon::createFromFormat('d.m.y', $cleanInput);
             }
+        } catch (\Throwable) {
+            return null;
         }
 
-        return $date ? $date->toDateTimeString() : '';
+        return $date;
     }
 
     public function scrapeNewestListings(int $page = 1): array
@@ -108,7 +125,7 @@ class CarsBgScraper extends Scraper
             $time = now()->subMinutes($i)->getPreciseTimestamp(3);
             try {
                 $results[] = $this->scrape(page: $page, time: $time);
-            } catch (\Illuminate\Http\Client\ConnectionException  $e) {
+            } catch (ConnectionException  $e) {
                 Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
             }
         }

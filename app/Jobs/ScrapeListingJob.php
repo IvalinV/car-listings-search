@@ -8,6 +8,7 @@ use App\Services\Deduplication;
 use App\Services\Scrapers\CarsBgScraper;
 use App\Services\Scrapers\Scraper;
 use App\Services\SitemapCache;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -79,9 +80,18 @@ class ScrapeListingJob implements ShouldQueue
 
             $listing = CarListing::where('fingerprint', $uuid)->first();
             $sources = $listing ? $listing->source_urls : [];
+            $sourceDates = $listing ? ($listing->source_dates ?? []) : [];
 
             if (! in_array($source_url, $sources)) {
                 $sources[] = $source_url;
+            }
+
+            $publishedAt = Arr::get($record, 'published_at');
+
+            if ($publishedAt) {
+                $sourceDates[$record['source']] = $publishedAt instanceof Carbon
+                    ? $publishedAt->toDateTimeString()
+                    : (string) $publishedAt;
             }
 
             CarListing::upsert([
@@ -96,6 +106,8 @@ class ScrapeListingJob implements ShouldQueue
                 'transmission' => Arr::get($record, 'params.transmission'),
                 'image_url' => $image_url,
                 'source_urls' => json_encode($sources),
+                'source_dates' => json_encode($sourceDates),
+                'published_at' => collect($sourceDates)->filter()->max(),
             ], 'fingerprint');
         }
 
