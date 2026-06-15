@@ -185,8 +185,28 @@ class extends Component {
             ->when($this->maxPrice, fn ($q) => $q->where('price', '<=', $this->maxPrice))
             ->when($this->minYear, fn ($q) => $q->where('year', '>=', $this->minYear))
             ->when($this->maxYear, fn ($q) => $q->where('year', '<=', $this->maxYear))
-            ->orderBy($this->sortBy, $this->sortDirection)
+            ->tap(fn ($q) => $this->applySorting($q))
             ->paginate(15);
+    }
+
+    /**
+     * Apply a validated sort to the listings query.
+     *
+     * Most listings have no `published_at` yet, so sorting by it falls back to
+     * `created_at`. This also avoids Postgres ordering NULLs first on a DESC sort,
+     * which would otherwise bury every dated listing beneath the date-less ones.
+     */
+    protected function applySorting(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $sortableColumns = ['published_at', 'price', 'year', 'mileage'];
+        $sortBy = in_array($this->sortBy, $sortableColumns, true) ? $this->sortBy : 'published_at';
+        $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+
+        if ($sortBy === 'published_at') {
+            $query->orderByRaw("COALESCE(published_at, created_at) {$direction}");
+        } else {
+            $query->orderBy($sortBy, $direction);
+        }
     }
 
     public function getSource($url)
@@ -383,7 +403,7 @@ class extends Component {
                         id="sortBy"
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     >
-                        <option value="created_at">Дата на публикуване</option>
+                        <option value="published_at">Дата на публикуване</option>
                         <option value="price">Цена</option>
                         <option value="year">Година</option>
                         <option value="mileage">Пробег</option>
