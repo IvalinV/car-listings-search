@@ -86,12 +86,13 @@ class ScrapeListingJob implements ShouldQueue
                 $sources[] = $source_url;
             }
 
-            $publishedAt = Arr::get($record, 'published_at');
+            $entry = array_filter([
+                'created' => $this->toDateTimeString(Arr::get($record, 'published_at')),
+                'updated' => $this->toDateTimeString(Arr::get($record, 'updated_at')),
+            ]);
 
-            if ($publishedAt) {
-                $sourceDates[$record['source']] = $publishedAt instanceof Carbon
-                    ? $publishedAt->toDateTimeString()
-                    : (string) $publishedAt;
+            if ($entry !== []) {
+                $sourceDates[$record['source']] = $entry;
             }
 
             CarListing::upsert([
@@ -107,13 +108,36 @@ class ScrapeListingJob implements ShouldQueue
                 'image_url' => $image_url,
                 'source_urls' => json_encode($sources),
                 'source_dates' => json_encode($sourceDates),
-                'published_at' => collect($sourceDates)->filter()->max(),
+                'published_at' => $this->latestUpdate($sourceDates),
             ], 'fingerprint');
         }
 
         if ($results !== []) {
             SitemapCache::flush();
         }
+    }
+
+    /**
+     * The most recent update across all sources, used as the `published_at`
+     * column ("Обновена"). Each entry is a `{created, updated}` map (legacy
+     * rows are a bare date string); the update date falls back to creation.
+     */
+    private function latestUpdate(array $sourceDates): ?string
+    {
+        $updates = collect($sourceDates)
+            ->map(fn ($entry) => is_array($entry) ? ($entry['updated'] ?? $entry['created'] ?? null) : $entry)
+            ->filter();
+
+        return $updates->isEmpty() ? null : $updates->max();
+    }
+
+    private function toDateTimeString(mixed $value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        return $value instanceof Carbon ? $value->toDateTimeString() : (string) $value;
     }
 
     /**

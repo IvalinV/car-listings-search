@@ -51,16 +51,36 @@ class CarListing extends Model
     }
 
     /**
-     * The earliest date the car was published on any source.
+     * The earliest date the car was created on any source ("Създадена").
      *
-     * Derived from the per-source `source_dates` map; the latest of those is
-     * already stored in the `published_at` column.
+     * Each `source_dates` entry is a per-source map of `{created, updated}`
+     * (legacy rows store a bare date string). This returns the minimum of the
+     * created dates; the latest update is already stored in `published_at`.
      */
     public function firstPublishedAt(): ?Carbon
     {
-        $dates = collect($this->source_dates ?? [])->filter();
+        $created = collect($this->source_dates ?? [])
+            ->map(fn ($entry) => is_array($entry) ? ($entry['created'] ?? $entry['updated'] ?? null) : $entry)
+            ->filter();
 
-        return $dates->isEmpty() ? null : Carbon::parse($dates->min());
+        return $created->isEmpty() ? null : Carbon::parse($created->min());
+    }
+
+    /**
+     * The date to show for a single source badge: its last update, falling back
+     * to its creation date. Handles both the nested shape and legacy strings.
+     */
+    public function sourceDate(string $source): ?Carbon
+    {
+        $entry = ($this->source_dates ?? [])[$source] ?? null;
+
+        if ($entry === null) {
+            return null;
+        }
+
+        $value = is_array($entry) ? ($entry['updated'] ?? $entry['created'] ?? null) : $entry;
+
+        return $value ? Carbon::parse($value) : null;
     }
 
     public function scopeActive(Builder $query): Builder

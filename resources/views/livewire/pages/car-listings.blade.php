@@ -542,33 +542,42 @@ class extends Component {
                                 {{-- Publication dates & per-source badges --}}
                                 @php($firstPublished = $car->firstPublishedAt())
                                 @if($car->source_dates && count($car->source_dates) > 0)
-                                    <div class="mt-3 border-t border-gray-100 pt-2 dark:border-gray-700">
+                                    <div class="mt-4 border-t border-gray-100 dark:border-gray-700">
                                         @if($firstPublished)
-                                            <p class="mb-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                            <p class="  text-xs text-gray-500 dark:text-gray-400">
                                                 Създадена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $firstPublished->format('d.m.Y') }}</span>
                                                 @if($car->published_at && $car->published_at->gt($firstPublished))
                                                     · Обновена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $car->published_at->format('d.m.Y') }}</span>
                                                 @endif
                                             </p>
                                         @endif
-                                        <div class="flex flex-wrap gap-1.5">
+                                        <div class="flex flex-wrap gap-2 py-4">
                                             @foreach($car->source_dates as $source => $date)
+                                                @php($sourceDate = $car->sourceDate($source))
                                                 <span
                                                     wire:key="src-{{ $car->id }}-{{ $source }}"
-                                                    class="inline-flex flex-col rounded bg-gray-100 px-2 py-1 leading-tight text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                                                    class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300"
                                                 >
-                                                    <span class="text-xs font-medium">{{ $source }}</span>
-                                                    <span class="text-[11px] text-gray-500 dark:text-gray-500">{{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}</span>
+                                                    <span class="flex flex-col items-start leading-tight">
+                                                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $source }}</span>
+                                                        @if($sourceDate)
+                                                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ $sourceDate->format('d.m.Y') }}</span>
+                                                        @endif
+                                                    </span>
                                                 </span>
                                             @endforeach
                                         </div>
                                     </div>
                                 @elseif($car->source_urls && count($car->source_urls) > 0)
                                     {{-- Records not yet re-scraped have no per-source dates: show plain badges. --}}
-                                    <div class="mt-2 flex flex-wrap gap-1.5">
+                                    <div class="mt-4 flex flex-wrap gap-2">
                                         @foreach($car->source_urls as $source => $url)
-                                            <span wire:key="srcurl-{{ $car->id }}-{{ $source }}" class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                            <span wire:key="srcurl-{{ $car->id }}-{{ $source }}" class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                                                 {{ $this->getSource($url)}}
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                                                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                                                </svg>
                                             </span>
                                         @endforeach
                                     </div>

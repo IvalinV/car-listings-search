@@ -286,7 +286,7 @@ class extends Component {
                 <div class="flex flex-wrap gap-3">
                     @foreach($carListing->source_urls as $url)
                         @php($source = $this->getSource($url))
-                        @php($sourceDate = $carListing->source_dates[$source] ?? null)
+                        @php($sourceDate = $carListing->sourceDate($source))
                         <a
                             href="{{ $url }}"
                             target="_blank"
@@ -295,9 +295,9 @@ class extends Component {
                             class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                         >
                             <span class="flex flex-col items-start leading-tight">
-                                <span>{{ $source }}</span>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $source }}</span>
                                 @if($sourceDate)
-                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ \Carbon\Carbon::parse($sourceDate)->format('d.m.Y') }}</span>
+                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ $sourceDate->format('d.m.Y') }}</span>
                                 @endif
                             </span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
