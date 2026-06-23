@@ -64,3 +64,20 @@ it('treats a live mobile.bg listing (200) as not removed', function (): void {
 
     expect((new MobileBgScraper)->isListingRemoved('https://mobile.bg/obiava-11489507861387492-x'))->toBeFalse();
 });
+
+it('scrapes mobile.bg makes from the autocomplete menu', function (): void {
+    $html = '<html><body>'
+        .'<div class="akSearchMarki" id="akSearchMarki"><div class="scroll">'
+        .'<p>-</p>'
+        .'<div class="a" data-popular="true"><span>Mercedes-Benz</span> <span>24075</span></div>'
+        .'<div class="a"><span>BMW</span> <span>19000</span></div>'
+        .'</div></div></body></html>';
+    Http::fake(['www.mobile.bg/*' => Http::response($html)]);
+
+    $makes = (new MobileBgScraper)->scrapeMakes();
+
+    expect($makes)->toEqual([
+        ['name' => 'Mercedes-Benz', 'slug' => null],
+        ['name' => 'BMW', 'slug' => null],
+    ]);
+});
