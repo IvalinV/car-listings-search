@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\CarListing;
+use App\Models\CarMake;
+use App\Models\CarModel;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -37,6 +39,12 @@ class extends Component {
 
     #[Url]
     public string $location = '';
+
+    #[Url]
+    public string $make = '';
+
+    #[Url]
+    public string $model = '';
 
     #[Url]
     public string $sortBy = 'published_at';
@@ -86,6 +94,17 @@ class extends Component {
         $this->resetPage();
     }
 
+    public function updatedMake(): void
+    {
+        $this->model = '';
+        $this->resetPage();
+    }
+
+    public function updatedModel(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatedSortBy(): void
     {
         $this->resetPage();
@@ -93,7 +112,7 @@ class extends Component {
 
     public function clearFilters(): void
     {
-        $this->reset(['search', 'fuelType', 'transmission', 'minPrice', 'maxPrice', 'minYear', 'maxYear', 'location']);
+        $this->reset(['search', 'fuelType', 'transmission', 'minPrice', 'maxPrice', 'minYear', 'maxYear', 'location', 'make', 'model']);
         $this->resetPage();
     }
 
@@ -120,6 +139,8 @@ class extends Component {
         if ($this->minYear) $count++;
         if ($this->maxYear) $count++;
         if ($this->location) $count++;
+        if ($this->make) $count++;
+        if ($this->model) $count++;
         return $count;
     }
 
@@ -169,15 +190,82 @@ class extends Component {
            ->toArray();
     }
 
+    protected function selectedMake(): ?CarMake
+    {
+        if ($this->make === '' || $this->make === 'unspecified') {
+            return null;
+        }
+
+        return CarMake::where('slug', $this->make)->first();
+    }
+
+    #[Computed]
+    public function makes(): array
+    {
+        $makes = CarMake::query()
+            ->whereHas('listings', fn ($q) => $q->where('is_active', true))
+            ->orderBy('name')
+            ->get(['name', 'slug'])
+            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name])
+            ->toArray();
+
+        if (CarListing::where('is_active', true)->whereNull('car_make_id')->exists()) {
+            $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка'];
+        }
+
+        return $makes;
+    }
+
+    #[Computed]
+    public function models(): array
+    {
+        $make = $this->selectedMake();
+
+        if ($make === null) {
+            return [];
+        }
+
+        $models = $make->models()
+            ->whereHas('listings', fn ($q) => $q->where('is_active', true))
+            ->orderBy('name')
+            ->get(['name', 'slug'])
+            ->map(fn (CarModel $m): array => ['slug' => $m->slug, 'name' => $m->name])
+            ->toArray();
+
+        $hasUnspecified = CarListing::where('is_active', true)
+            ->where('car_make_id', $make->id)
+            ->whereNull('car_model_id')
+            ->exists();
+
+        if ($hasUnspecified) {
+            $models[] = ['slug' => 'unspecified', 'name' => 'Без модел'];
+        }
+
+        return $models;
+    }
+
     #[Computed]
     public function listings(): \Illuminate\Pagination\LengthAwarePaginator|array
     {
+        $make = $this->selectedMake();
+        $modelId = null;
+
+        if ($make !== null && $this->model !== '' && $this->model !== 'unspecified') {
+            $modelId = $make->models()->where('slug', $this->model)->value('id');
+        }
+
         return CarListing::query()
             ->where('is_active', true)
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('title', 'like', '%' . $this->search . '%')
-                  ->orWhere('description', 'like', '%' . $this->search . '%');
+                  ->orWhere('description', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('make', fn ($m) => $m->where('name', 'like', '%' . $this->search . '%'))
+                  ->orWhereHas('model', fn ($m) => $m->where('name', 'like', '%' . $this->search . '%'));
             }))
+            ->when($this->make === 'unspecified', fn ($q) => $q->whereNull('car_make_id'))
+            ->when($make, fn ($q) => $q->where('car_make_id', $make->id))
+            ->when($make && $this->model === 'unspecified', fn ($q) => $q->whereNull('car_model_id'))
+            ->when($modelId, fn ($q) => $q->where('car_model_id', $modelId))
             ->when($this->fuelType, fn ($q) => $q->where('fuel_type', $this->fuelType))
             ->when($this->transmission, fn ($q) => $q->where('transmission', $this->transmission))
             ->when($this->location, fn ($q) => $q->where('location', 'LIKE', "%$this->location%"))
@@ -303,6 +391,37 @@ class extends Component {
                         placeholder="Марка, модел..."
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     >
+                </div>
+
+                {{-- Make --}}
+                <div>
+                    <label for="make" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Марка</label>
+                    <select
+                        wire:model.live="make"
+                        id="make"
+                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    >
+                        <option value="">Всички</option>
+                        @foreach($this->makes as $makeOption)
+                            <option value="{{ $makeOption['slug'] }}">{{ $makeOption['name'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Model --}}
+                <div>
+                    <label for="model" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Модел</label>
+                    <select
+                        wire:model.live="model"
+                        id="model"
+                        @disabled($this->make === '')
+                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    >
+                        <option value="">Всички</option>
+                        @foreach($this->models as $modelOption)
+                            <option value="{{ $modelOption['slug'] }}">{{ $modelOption['name'] }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 {{-- Fuel Type --}}
@@ -431,17 +550,17 @@ class extends Component {
             {{-- Results Header --}}
             <div class="mb-4 flex items-center justify-between">
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                    <span wire:loading.remove wire:target="search, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
+                    <span wire:loading.remove wire:target="search, make, model, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
                         Намерени <strong>{{ $this->listings->total() }}</strong> обяви
                     </span>
-                    <span wire:loading wire:target="search, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
+                    <span wire:loading wire:target="search, make, model, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
                         Зареждане...
                     </span>
                 </p>
             </div>
 
             {{-- Loading Overlay --}}
-            <div wire:loading.delay wire:target="search, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection, gotoPage, previousPage, nextPage" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+            <div wire:loading.delay wire:target="search, make, model, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection, gotoPage, previousPage, nextPage" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
                 <div class="rounded-lg bg-white px-6 py-4 shadow-lg dark:bg-gray-800">
                     <div class="flex items-center gap-3">
                         <svg class="h-5 w-5 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
