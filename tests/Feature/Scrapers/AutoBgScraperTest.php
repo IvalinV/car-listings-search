@@ -52,3 +52,39 @@ it('treats an auto.bg redirect that is not to a category page as not removed', f
 
     expect((new AutoBgScraper)->isListingRemoved('https://www.auto.bg/obiava/123/x'))->toBeFalse();
 });
+
+it('scrapes auto.bg makes from the category page links', function (): void {
+    $html = '<html><body>'
+        .'<a href="/obiavi/avtomobili-dzhipove/audi">Audi</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw">BMW</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/alfa-romeo">Alfa Romeo</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw/320">320</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw/page/2">2</a>'
+        .'</body></html>';
+    Http::fake(['www.auto.bg/*' => Http::response($html)]);
+
+    $makes = (new AutoBgScraper)->scrapeMakes();
+
+    expect($makes)->toEqual([
+        ['name' => 'Audi', 'slug' => 'audi'],
+        ['name' => 'BMW', 'slug' => 'bmw'],
+        ['name' => 'Alfa Romeo', 'slug' => 'alfa-romeo'],
+    ]);
+});
+
+it('scrapes auto.bg models for a make, skipping pagination and duplicates', function (): void {
+    $html = '<html><body>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw/320">320</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw/x5">X5</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw/320">320</a>'
+        .'<a href="/obiavi/avtomobili-dzhipove/bmw/page/2">next</a>'
+        .'</body></html>';
+    Http::fake(['www.auto.bg/*' => Http::response($html)]);
+
+    $models = (new AutoBgScraper)->scrapeModels('bmw');
+
+    expect($models)->toEqual([
+        ['name' => '320', 'slug' => '320'],
+        ['name' => 'X5', 'slug' => 'x5'],
+    ]);
+});
