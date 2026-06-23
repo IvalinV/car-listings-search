@@ -21,4 +21,12 @@ class CarMake extends Model
     {
         return $this->hasMany(CarModel::class);
     }
+
+    /**
+     * @return HasMany<CarListing, $this>
+     */
+    public function listings(): HasMany
+    {
+        return $this->hasMany(CarListing::class, 'car_make_id');
+    }
 }

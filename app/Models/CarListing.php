@@ -7,6 +7,7 @@ use Database\Factories\CarListingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class CarListing extends Model
@@ -81,6 +82,16 @@ class CarListing extends Model
         $value = is_array($entry) ? ($entry['updated'] ?? $entry['created'] ?? null) : $entry;
 
         return $value ? Carbon::parse($value) : null;
+    }
+
+    public function make(): BelongsTo
+    {
+        return $this->belongsTo(CarMake::class, 'car_make_id');
+    }
+
+    public function model(): BelongsTo
+    {
+        return $this->belongsTo(CarModel::class, 'car_model_id');
     }
 
     public function scopeActive(Builder $query): Builder
