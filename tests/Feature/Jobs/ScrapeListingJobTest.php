@@ -97,3 +97,13 @@ it('leaves published_at null when no source provides a date', function (): void 
 
     expect(CarListing::first()->published_at)->toBeNull();
 });
+
+it('resolves and stores make and model when persisting a scraped record', function (): void {
+    persist([scrapedRecord('mobile.bg', 'www.mobile.bg/obiava-11572426012950088-audi-a4', null)]);
+
+    $listing = CarListing::first();
+
+    expect($listing->make->name)->toBe('Audi')
+        ->and($listing->model->name)->toBe('A4')
+        ->and(\App\Models\CarMake::where('name', 'Audi')->count())->toBe(1);
+});

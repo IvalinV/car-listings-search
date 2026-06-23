@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Services\Deduplication;
+use App\Services\ListingMakeModelResolver;
 use App\Services\Scrapers\CarsBgScraper;
 use App\Services\Scrapers\Scraper;
 use App\Services\SitemapCache;
@@ -95,9 +96,13 @@ class ScrapeListingJob implements ShouldQueue
                 $sourceDates[$record['source']] = $entry;
             }
 
+            $resolved = app(ListingMakeModelResolver::class)->resolve(Arr::get($record, 'title'));
+
             CarListing::upsert([
                 'fingerprint' => $uuid,
                 'title' => Arr::get($record, 'title'),
+                'car_make_id' => $resolved['make']?->id,
+                'car_model_id' => $resolved['model']?->id,
                 'price' => $price ?? 0,
                 'description' => Arr::get($record, 'description'),
                 'year' => $year,
