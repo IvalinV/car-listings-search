@@ -25,6 +25,16 @@ class Scraper implements ScraperInterface
     }
 
     /**
+     * Scrape the platform's list of car makes.
+     *
+     * @return array<int, array{name: string, slug: string|null}>
+     */
+    public function scrapeMakes(): array
+    {
+        return [];
+    }
+
+    /**
      * Determine whether the listing at the given URL has been removed.
      *
      * The default treats a genuine 404 as removed; sources that soft-delete

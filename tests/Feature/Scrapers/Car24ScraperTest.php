@@ -47,3 +47,22 @@ it('does not mistake a transient car24 API failure for a removed listing', funct
     expect(fn (): bool => (new Car24Scraper)->isListingRemoved('https://car24.bg/obiava/123/x'))
         ->toThrow(RequestException::class);
 });
+
+it('scrapes and merges car24 popular and other makes', function (): void {
+    Http::fake(['api.car24.bg/*' => Http::response([
+        'status' => 'success',
+        'data' => [
+            'marki' => [['Audi', 'audi'], ['BMW', 'bmw'], ['VW', 'vw']],
+            'markiOther' => [
+                ['brand' => 'Abarth', 'count' => '27', 'sef' => 'abarth'],
+                ['brand' => 'Acura', 'count' => '46', 'sef' => 'acura'],
+            ],
+        ],
+    ])]);
+
+    $makes = (new Car24Scraper)->scrapeMakes();
+
+    expect($makes)->toContain(['name' => 'VW', 'slug' => 'vw'])
+        ->and($makes)->toContain(['name' => 'Abarth', 'slug' => 'abarth'])
+        ->and(collect($makes)->pluck('name')->all())->toContain('Audi', 'BMW', 'Acura');
+});
