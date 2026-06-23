@@ -18,6 +18,41 @@ class CarsBgScraper extends Scraper
     private const MIN_CREATION_TIMESTAMP = 1262304000;
 
     /**
+     * @return array<int, array{name: string, slug: null}>
+     *
+     * @throws ConnectionException
+     */
+    public function scrapeMakes(): array
+    {
+        $response = Http::withHeaders($this->browserHeaders())
+            ->get('https://www.cars.bg/');
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $crawler = new Crawler($response->body());
+        $makes = [];
+
+        $crawler->filter('#brandsList .mdc-chip__text')->each(function (Crawler $node) use (&$makes): void {
+            $input = $node->filter('input[name="brandId"]');
+
+            if ($input->count() > 0 && $input->attr('value') === '0') {
+                return;
+            }
+
+            $label = $node->filter('label');
+            $name = $label->count() > 0 ? trim($label->text('')) : '';
+
+            if ($name !== '') {
+                $makes[] = ['name' => $name, 'slug' => null];
+            }
+        });
+
+        return $makes;
+    }
+
+    /**
      * @return array<int, array{title: string, price: string, link: string|null, description: string, image: string|null}>
      *
      * @throws ConnectionException

@@ -83,3 +83,20 @@ it('treats a cars.bg redirect that is not to status_page.php as not removed', fu
 
     expect((new CarsBgScraper)->isListingRemoved('https://www.cars.bg/offer/123'))->toBeFalse();
 });
+
+it('scrapes cars.bg makes from the brand chips, skipping "All"', function (): void {
+    $html = '<html><body>'
+        .'<div id="brandsList" class="mdc-chip-set">'
+        .'<span class="mdc-chip__text"><input type="radio" name="brandId" id="brandId_0" value="0" checked /><label for="brandId_0">Всички</label></span>'
+        .'<span class="mdc-chip__text"><input type="radio" name="brandId" id="brandId_1" value="1" /><label for="brandId_1">BMW</label></span>'
+        .'<span class="mdc-chip__text"><input type="radio" name="brandId" id="brandId_2" value="2" /><label for="brandId_2">Audi</label></span>'
+        .'</div></body></html>';
+    Http::fake(['www.cars.bg/*' => Http::response($html)]);
+
+    $makes = (new CarsBgScraper)->scrapeMakes();
+
+    expect($makes)->toEqual([
+        ['name' => 'BMW', 'slug' => null],
+        ['name' => 'Audi', 'slug' => null],
+    ]);
+});
