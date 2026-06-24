@@ -85,6 +85,23 @@ it('leaves the model null for a bare Range Rover title', function (): void {
         ->and($result['model'])->toBeNull();
 });
 
+it('re-attributes a model-make to its parent make with the word as model', function (): void {
+    CarMake::factory()->create(['name' => 'Chevrolet', 'slug' => 'chevrolet']);
+    CarMake::factory()->create(['name' => 'Corvette', 'slug' => 'corvette']);
+
+    $result = resolver()->resolve('Corvette C3 L82');
+
+    expect($result['make']->name)->toBe('Chevrolet')
+        ->and($result['model']->name)->toBe('Corvette');
+});
+
+it('re-attributes a model-make even when the parent make is fully qualified', function (): void {
+    $result = resolver()->resolve('Chevrolet Corvette C3');
+
+    expect($result['make']->name)->toBe('Chevrolet')
+        ->and($result['model']->name)->toBe('Corvette');
+});
+
 it('auto-creates an unknown make and model, idempotently', function (): void {
     $first = resolver()->resolve('Tesla Model3');
     $second = resolver()->resolve('Tesla Model3');

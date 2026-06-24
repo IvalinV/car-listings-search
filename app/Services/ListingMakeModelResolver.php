@@ -20,6 +20,18 @@ class ListingMakeModelResolver
         'Land Rover' => ['Range Rover'],
     ];
 
+    /**
+     * Names some platforms scrape as standalone makes but that are really models
+     * of another make. A title leading with one (e.g. "Corvette C3") resolves to
+     * the parent make with the name itself as the model. Keyed by the mis-scraped
+     * make name → parent make name.
+     *
+     * @var array<string, string>
+     */
+    private array $modelMakes = [
+        'Corvette' => 'Chevrolet',
+    ];
+
     public function __construct(private readonly MakeNormalizer $normalizer) {}
 
     /**
@@ -41,14 +53,36 @@ class ListingMakeModelResolver
             return ['make' => null, 'model' => null];
         }
 
+        if (isset($this->modelMakes[$make->name])) {
+            return $this->reattributeModelMake($make);
+        }
+
         $model = $this->matchModel($make, array_slice($tokens, $consumed));
 
         return ['make' => $make, 'model' => $model];
     }
 
     /**
+     * Move a make that is really a model (e.g. "Corvette") under its parent
+     * make ("Chevrolet"), using the mis-scraped name as the model.
+     *
+     * @return array{make: CarMake, model: CarModel}
+     */
+    private function reattributeModelMake(CarMake $modelMake): array
+    {
+        $parentName = $this->modelMakes[$modelMake->name];
+
+        $parent = CarMake::firstOrCreate(
+            ['name' => $parentName],
+            ['slug' => Str::slug($parentName)],
+        );
+
+        return ['make' => $parent, 'model' => $this->findOrCreateModel($parent, $modelMake->name)];
+    }
+
+    /**
      * @param  array<int, string>  $tokens
-     * @return array{0: ?CarMake, 1: int}  the matched make and the number of leading tokens it consumed
+     * @return array{0: ?CarMake, 1: int} the matched make and the number of leading tokens it consumed
      */
     private function matchMake(array $tokens): array
     {
@@ -82,15 +116,20 @@ class ListingMakeModelResolver
             return null;
         }
 
-        $existing = $make->models()->whereRaw('LOWER(name) = ?', [mb_strtolower($token)])->first();
+        return $this->findOrCreateModel($make, $token);
+    }
+
+    private function findOrCreateModel(CarMake $make, string $name): CarModel
+    {
+        $existing = $make->models()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
 
         if ($existing !== null) {
             return $existing;
         }
 
         return $make->models()->create([
-            'name' => $token,
-            'slug' => Str::slug($token),
+            'name' => $name,
+            'slug' => Str::slug($name),
         ]);
     }
 
@@ -115,4 +154,3 @@ class ListingMakeModelResolver
         return $rest;
     }
 }
-
