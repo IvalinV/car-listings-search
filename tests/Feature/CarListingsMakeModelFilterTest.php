@@ -68,6 +68,21 @@ it('matches the canonical make name in search even when the title uses an alias'
         ->assertSee('VW Passat');
 });
 
+it('includes active listing counts in the make and model options', function (): void {
+    seedCatalogListings();
+
+    $makes = collect(Livewire::test('pages.car-listings')->get('makes'));
+
+    expect($makes->firstWhere('slug', 'bmw')['count'])->toBe(2)
+        ->and($makes->firstWhere('slug', 'volkswagen')['count'])->toBe(1)
+        ->and($makes->firstWhere('slug', 'unspecified')['count'])->toBe(1);
+
+    $models = collect(Livewire::test('pages.car-listings')->set('make', 'bmw')->get('models'));
+
+    expect($models->firstWhere('slug', 'x5')['count'])->toBe(1)
+        ->and($models->firstWhere('slug', 'unspecified')['count'])->toBe(1);
+});
+
 it('keeps every active listing reachable through some make filter value', function (): void {
     seedCatalogListings();
 

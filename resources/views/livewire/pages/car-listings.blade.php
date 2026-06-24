@@ -203,14 +203,17 @@ class extends Component {
     public function makes(): array
     {
         $makes = CarMake::query()
+            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)])
             ->whereHas('listings', fn ($q) => $q->where('is_active', true))
             ->orderBy('name')
-            ->get(['name', 'slug'])
-            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name])
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $m->count])
             ->toArray();
 
-        if (CarListing::where('is_active', true)->whereNull('car_make_id')->exists()) {
-            $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка'];
+        $nullMakeCount = CarListing::where('is_active', true)->whereNull('car_make_id')->count();
+
+        if ($nullMakeCount > 0) {
+            $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка', 'count' => $nullMakeCount];
         }
 
         return $makes;
@@ -226,19 +229,20 @@ class extends Component {
         }
 
         $models = $make->models()
+            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)])
             ->whereHas('listings', fn ($q) => $q->where('is_active', true))
             ->orderBy('name')
-            ->get(['name', 'slug'])
-            ->map(fn (CarModel $m): array => ['slug' => $m->slug, 'name' => $m->name])
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (CarModel $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $m->count])
             ->toArray();
 
-        $hasUnspecified = CarListing::where('is_active', true)
+        $nullModelCount = CarListing::where('is_active', true)
             ->where('car_make_id', $make->id)
             ->whereNull('car_model_id')
-            ->exists();
+            ->count();
 
-        if ($hasUnspecified) {
-            $models[] = ['slug' => 'unspecified', 'name' => 'Без модел'];
+        if ($nullModelCount > 0) {
+            $models[] = ['slug' => 'unspecified', 'name' => 'Без модел', 'count' => $nullModelCount];
         }
 
         return $models;
@@ -403,7 +407,7 @@ class extends Component {
                     >
                         <option value="">Всички</option>
                         @foreach($this->makes as $makeOption)
-                            <option value="{{ $makeOption['slug'] }}">{{ $makeOption['name'] }}</option>
+                            <option value="{{ $makeOption['slug'] }}">{{ $makeOption['name'] }} ({{ $makeOption['count'] }})</option>
                         @endforeach
                     </select>
                 </div>
@@ -419,7 +423,7 @@ class extends Component {
                     >
                         <option value="">Всички</option>
                         @foreach($this->models as $modelOption)
-                            <option value="{{ $modelOption['slug'] }}">{{ $modelOption['name'] }}</option>
+                            <option value="{{ $modelOption['slug'] }}">{{ $modelOption['name'] }} ({{ $modelOption['count'] }})</option>
                         @endforeach
                     </select>
                 </div>
