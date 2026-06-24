@@ -61,6 +61,30 @@ it('returns null make and model for an empty title', function (): void {
         ->and($result['model'])->toBeNull();
 });
 
+it('treats Range Rover as the Land Rover make with the variant as model', function (string $title, string $expectedModel): void {
+    CarMake::factory()->create(['name' => 'Land Rover', 'slug' => 'land-rover']);
+
+    $result = resolver()->resolve($title);
+
+    expect($result['make']->name)->toBe('Land Rover')
+        ->and($result['model']->name)->toBe($expectedModel);
+})->with([
+    'leading Range Rover' => ['Range Rover Evoque 2.2 TD4', 'Evoque'],
+    'Range Rover Sport' => ['Range Rover Sport 3.6 272hp', 'Sport'],
+    'full Land Rover Range Rover' => ['Land Rover Range Rover Evoque Автоматик 2.2', 'Evoque'],
+    'Land Rover Range Rover Vogue' => ['Land Rover Range Rover Vogue 4.4 D', 'Vogue'],
+    'plain Land Rover model' => ['Land Rover Discovery', 'Discovery'],
+]);
+
+it('leaves the model null for a bare Range Rover title', function (): void {
+    CarMake::factory()->create(['name' => 'Land Rover', 'slug' => 'land-rover']);
+
+    $result = resolver()->resolve('Range Rover 3.0TD V6');
+
+    expect($result['make']->name)->toBe('Land Rover')
+        ->and($result['model'])->toBeNull();
+});
+
 it('auto-creates an unknown make and model, idempotently', function (): void {
     $first = resolver()->resolve('Tesla Model3');
     $second = resolver()->resolve('Tesla Model3');

@@ -9,6 +9,17 @@ use Illuminate\Support\Str;
 
 class ListingMakeModelResolver
 {
+    /**
+     * Sub-brand prefixes to skip when picking the model, keyed by canonical make
+     * name. E.g. "Land Rover Range Rover Evoque" → model "Evoque", and a title
+     * starting "Range Rover Evoque" (make aliased to Land Rover) → "Evoque".
+     *
+     * @var array<string, array<int, string>>
+     */
+    private array $subBrands = [
+        'Land Rover' => ['Range Rover'],
+    ];
+
     public function __construct(private readonly MakeNormalizer $normalizer) {}
 
     /**
@@ -64,6 +75,7 @@ class ListingMakeModelResolver
      */
     private function matchModel(CarMake $make, array $rest): ?CarModel
     {
+        $rest = $this->stripSubBrand($make, $rest);
         $token = trim($rest[0] ?? '');
 
         if ($token === '' || preg_match('/^\d+[.,]\d+/', $token) === 1) {
@@ -81,4 +93,26 @@ class ListingMakeModelResolver
             'slug' => Str::slug($token),
         ]);
     }
+
+    /**
+     * Drop a leading sub-brand phrase (e.g. "Range Rover" for Land Rover) so the
+     * model is the real variant rather than the sub-brand's first word.
+     *
+     * @param  array<int, string>  $rest
+     * @return array<int, string>
+     */
+    private function stripSubBrand(CarMake $make, array $rest): array
+    {
+        foreach ($this->subBrands[$make->name] ?? [] as $phrase) {
+            $words = explode(' ', $phrase);
+            $head = implode(' ', array_slice($rest, 0, count($words)));
+
+            if (mb_strtolower($head) === mb_strtolower($phrase)) {
+                return array_slice($rest, count($words));
+            }
+        }
+
+        return $rest;
+    }
 }
+

@@ -15,6 +15,7 @@ class MakeNormalizer
         'mercedes' => 'Mercedes-Benz',
         'mercedes benz' => 'Mercedes-Benz',
         'alfa' => 'Alfa Romeo',
+        'range rover' => 'Land Rover',
     ];
 
     public function canonicalize(string $name): string

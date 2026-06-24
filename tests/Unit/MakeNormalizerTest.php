@@ -8,6 +8,7 @@ it('canonicalizes known abbreviations to full names', function (string $input, s
     'VW -> Volkswagen' => ['VW', 'Volkswagen'],
     'Alfa -> Alfa Romeo' => ['Alfa', 'Alfa Romeo'],
     'spaced Mercedes' => ['Mercedes Benz', 'Mercedes-Benz'],
+    'Range Rover -> Land Rover' => ['Range Rover', 'Land Rover'],
 ]);
 
 it('trims and collapses internal whitespace', function (): void {
