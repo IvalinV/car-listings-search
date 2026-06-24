@@ -202,12 +202,17 @@ class extends Component {
     #[Computed]
     public function makes(): array
     {
-        $makes = CarMake::query()
-            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)])
-            ->whereHas('listings', fn ($q) => $q->where('is_active', true))
+        $counts = CarListing::query()
+            ->where('is_active', true)
+            ->whereNotNull('car_make_id')
+            ->selectRaw('car_make_id, count(*) as total')
+            ->groupBy('car_make_id')
+            ->pluck('total', 'car_make_id');
+
+        $makes = CarMake::whereIn('id', $counts->keys())
             ->orderBy('name')
             ->get(['id', 'name', 'slug'])
-            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $m->count])
+            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $counts[$m->id]])
             ->toArray();
 
         $nullMakeCount = CarListing::where('is_active', true)->whereNull('car_make_id')->count();
@@ -260,12 +265,18 @@ class extends Component {
 
         return CarListing::query()
             ->where('is_active', true)
-            ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('title', 'like', '%' . $this->search . '%')
-                  ->orWhere('description', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('make', fn ($m) => $m->where('name', 'like', '%' . $this->search . '%'))
-                  ->orWhereHas('model', fn ($m) => $m->where('name', 'like', '%' . $this->search . '%'));
-            }))
+            ->when($this->search, function ($q) {
+                $term = $this->search;
+                $makeIds = CarMake::where('name', 'like', '%' . $term . '%')->pluck('id');
+                $modelIds = CarModel::where('name', 'like', '%' . $term . '%')->pluck('id');
+
+                $q->where(function ($q) use ($term, $makeIds, $modelIds) {
+                    $q->where('title', 'like', '%' . $term . '%')
+                      ->orWhere('description', 'like', '%' . $term . '%')
+                      ->when($makeIds->isNotEmpty(), fn ($q) => $q->orWhereIn('car_make_id', $makeIds))
+                      ->when($modelIds->isNotEmpty(), fn ($q) => $q->orWhereIn('car_model_id', $modelIds));
+                });
+            })
             ->when($this->make === 'unspecified', fn ($q) => $q->whereNull('car_make_id'))
             ->when($make, fn ($q) => $q->where('car_make_id', $make->id))
             ->when($make && $this->model === 'unspecified', fn ($q) => $q->whereNull('car_model_id'))
