@@ -34,5 +34,5 @@ it('links to the make\'s top models', function (): void {
 
     get(route('make-listings', 'bmw'))
         ->assertOk()
-        ->assertSee(route('car-listings', ['make' => 'bmw', 'model' => 'x5']), false);
+        ->assertSee(e(route('car-listings', ['make' => 'bmw', 'model' => 'x5'])), false);
 });

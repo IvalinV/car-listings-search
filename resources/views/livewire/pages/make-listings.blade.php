@@ -156,7 +156,7 @@ class extends Component {
         <div class="mb-6 flex flex-wrap gap-2">
             @foreach($this->topModels as $model)
                 <a
-                    href="{!! route('car-listings', ['make' => $carMake->slug, 'model' => $model['slug']]) !!}"
+                    href="{{ route('car-listings', ['make' => $carMake->slug, 'model' => $model['slug']]) }}"
                     wire:navigate
                     class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-200"
                 >
