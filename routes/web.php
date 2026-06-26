@@ -10,5 +10,6 @@ Route::livewire('/marki', 'pages.make-index')->name('make-index');
 Route::livewire('/obiavi/{make}', 'pages.make-listings')->name('make-listings');
 
 Route::get('/sitemap.xml', [SeoController::class, 'sitemapIndex'])->name('sitemap');
+Route::get('/sitemap-makes.xml', [SeoController::class, 'sitemapMakes'])->name('sitemap.makes');
 Route::get('/sitemap-{page}.xml', [SeoController::class, 'sitemapPage'])->whereNumber('page')->name('sitemap.page');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');

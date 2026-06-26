@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CarListing;
+use App\Models\CarMake;
 use App\Services\SitemapCache;
 use Illuminate\Http\Response;
 
@@ -38,6 +39,25 @@ class SeoController extends Controller
                 'listings' => $listings,
                 'includeHome' => $page === 1,
             ])->render();
+        });
+
+        return response($xml)->header('Content-Type', 'application/xml');
+    }
+
+    public function sitemapMakes(): Response
+    {
+        $xml = SitemapCache::remember('makes', function (): string {
+            $makeIds = CarListing::query()
+                ->where('is_active', true)
+                ->whereNotNull('car_make_id')
+                ->distinct()
+                ->pluck('car_make_id');
+
+            $makes = CarMake::whereIn('id', $makeIds)
+                ->orderBy('name')
+                ->get(['slug']);
+
+            return view('seo.sitemap-makes', ['makes' => $makes])->render();
         });
 
         return response($xml)->header('Content-Type', 'application/xml');
