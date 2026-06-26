@@ -81,7 +81,7 @@
         @if($listing->source_dates && count($listing->source_dates) > 0)
             <div class="mt-4 border-t border-gray-100 dark:border-gray-700">
                 @if($firstPublished)
-                    <p class="  text-xs text-gray-500 dark:text-gray-400">
+                    <p class="  text-xs py-2 text-gray-500 dark:text-gray-400">
                         Създадена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $firstPublished->format('d.m.Y') }}</span>
                         @if($listing->published_at && $listing->published_at->gt($firstPublished))
                             · Обновена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $listing->published_at->format('d.m.Y') }}</span>
