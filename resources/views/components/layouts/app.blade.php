@@ -45,6 +45,7 @@
                 <p class="text-sm text-gray-500 dark:text-white">
                     AutoSearch - Агрегатор на автомобилни обяви от България
                 </p>
+                <a href="{{ route('make-index') }}" class="text-sm text-gray-500 hover:text-blue-600 dark:text-white" wire:navigate>Марки</a>
                 <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-white">
                     <a class="dark:hover:text-gray-200" href="https://www.cars.bg/" target="_blank">cars.bg</a>
                     <a class="dark:hover:text-gray-200" href="https://www.mobile.bg/" target="_blank">mobile.bg</a>
