@@ -163,4 +163,26 @@ class CarListing extends Model
 
         return $query;
     }
+
+    public function displayImageUrl(): ?string
+    {
+        if ($this->image_url === null || $this->image_url === '') {
+            return null;
+        }
+
+        return str_starts_with($this->image_url, 'https://')
+            ? $this->image_url
+            : 'https://'.$this->image_url;
+    }
+
+    public function sourceLabel(string $url): ?string
+    {
+        return match (true) {
+            Str::contains($url, 'cars.bg') => 'cars.bg',
+            Str::contains($url, 'car24.bg') => 'car24.bg',
+            Str::contains($url, 'mobile.bg') => 'mobile.bg',
+            Str::contains($url, 'auto.bg') => 'auto.bg',
+            default => null,
+        };
+    }
 }
