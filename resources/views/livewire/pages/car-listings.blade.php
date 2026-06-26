@@ -204,6 +204,7 @@ class extends Component {
     {
         $counts = CarListing::query()
             ->where('is_active', true)
+            ->priced()
             ->whereNotNull('car_make_id')
             ->selectRaw('car_make_id, count(*) as total')
             ->groupBy('car_make_id')
@@ -215,7 +216,7 @@ class extends Component {
             ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $counts[$m->id]])
             ->toArray();
 
-        $nullMakeCount = CarListing::where('is_active', true)->whereNull('car_make_id')->count();
+        $nullMakeCount = CarListing::where('is_active', true)->priced()->whereNull('car_make_id')->count();
 
         if ($nullMakeCount > 0) {
             $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка', 'count' => $nullMakeCount];
@@ -234,14 +235,21 @@ class extends Component {
         }
 
         $models = $make->models()
-            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)])
-            ->whereHas('listings', fn ($q) => $q->where('is_active', true))
+            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)->priced()])
+            ->whereHas('listings', fn ($q) => $q->where('is_active', true)->priced())
             ->orderBy('name')
             ->get(['id', 'name', 'slug'])
-            ->map(fn (CarModel $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $m->count])
+            ->groupBy('slug')
+            ->map(fn ($group): array => [
+                'slug' => $group->first()->slug,
+                'name' => $group->first()->name,
+                'count' => $group->sum('count'),
+            ])
+            ->values()
             ->toArray();
 
         $nullModelCount = CarListing::where('is_active', true)
+            ->priced()
             ->where('car_make_id', $make->id)
             ->whereNull('car_model_id')
             ->count();
@@ -257,14 +265,15 @@ class extends Component {
     public function listings(): \Illuminate\Pagination\LengthAwarePaginator|array
     {
         $make = $this->selectedMake();
-        $modelId = null;
+        $modelIds = [];
 
         if ($make !== null && $this->model !== '' && $this->model !== 'unspecified') {
-            $modelId = $make->models()->where('slug', $this->model)->value('id');
+            $modelIds = $make->models()->where('slug', $this->model)->pluck('id')->all();
         }
 
         return CarListing::query()
             ->where('is_active', true)
+            ->priced()
             ->when($this->search, function ($q) {
                 $term = $this->search;
                 $makeIds = CarMake::where('name', 'like', '%' . $term . '%')->pluck('id');
@@ -280,7 +289,7 @@ class extends Component {
             ->when($this->make === 'unspecified', fn ($q) => $q->whereNull('car_make_id'))
             ->when($make, fn ($q) => $q->where('car_make_id', $make->id))
             ->when($make && $this->model === 'unspecified', fn ($q) => $q->whereNull('car_model_id'))
-            ->when($modelId, fn ($q) => $q->where('car_model_id', $modelId))
+            ->when($modelIds, fn ($q) => $q->whereIn('car_model_id', $modelIds))
             ->when($this->fuelType, fn ($q) => $q->where('fuel_type', $this->fuelType))
             ->when($this->transmission, fn ($q) => $q->where('transmission', $this->transmission))
             ->when($this->location, fn ($q) => $q->where('location', 'LIKE', "%$this->location%"))

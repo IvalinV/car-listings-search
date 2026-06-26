@@ -15,7 +15,36 @@ class CarListing extends Model
     /** @use HasFactory<CarListingFactory> */
     use HasFactory;
 
+    /**
+     * Placeholder price used by sources when a listing has no real price.
+     * Excluded from filtering, sorting and stats so it never floods results.
+     */
+    public const UNPRICED_SENTINEL = 99999999;
+
     protected $guarded = [];
+
+    /**
+     * Placeholder / junk prices that sources use instead of a real value:
+     * the explicit sentinel, repeated-digit prices (e.g. 1111111) and
+     * sequential prices (e.g. 123456789). Only prices of 6+ digits are
+     * treated as junk so plausible real prices (e.g. 5555) are left alone.
+     *
+     * @return list<int>
+     */
+    public static function junkPrices(): array
+    {
+        $prices = [self::UNPRICED_SENTINEL];
+
+        foreach (range(6, 9) as $length) {
+            foreach (range(1, 9) as $digit) {
+                $prices[] = (int) str_repeat((string) $digit, $length);
+            }
+
+            $prices[] = (int) substr('123456789', 0, $length);
+        }
+
+        return array_values(array_unique($prices));
+    }
 
     protected function casts(): array
     {
@@ -97,6 +126,11 @@ class CarListing extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopePriced(Builder $query): Builder
+    {
+        return $query->whereNotIn('price', self::junkPrices());
     }
 
     public function scopeSearch(Builder $query, ?string $term): Builder

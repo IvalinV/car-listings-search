@@ -60,6 +60,36 @@ it('filters by model and by Unspecified model within a make', function (): void 
         ->assertDontSee('BMW X5');
 });
 
+it('filters by model when a make has duplicate models sharing one slug', function (): void {
+    $audi = CarMake::factory()->create(['name' => 'Audi', 'slug' => 'audi']);
+    $catalogA4 = $audi->models()->create(['name' => 'Audi A4', 'slug' => 'a4']);
+    $derivedA4 = $audi->models()->create(['name' => 'A4', 'slug' => 'a4']);
+
+    CarListing::factory()->create(['title' => 'Catalog A4 listing', 'is_active' => true, 'car_make_id' => $audi->id, 'car_model_id' => $catalogA4->id]);
+    CarListing::factory()->create(['title' => 'Derived A4 listing', 'is_active' => true, 'car_make_id' => $audi->id, 'car_model_id' => $derivedA4->id]);
+
+    Livewire::test('pages.car-listings')
+        ->set('make', 'audi')
+        ->set('model', 'a4')
+        ->assertSee('Catalog A4 listing')
+        ->assertSee('Derived A4 listing');
+});
+
+it('lists a single deduplicated model option per slug with summed counts', function (): void {
+    $audi = CarMake::factory()->create(['name' => 'Audi', 'slug' => 'audi']);
+    $catalogA4 = $audi->models()->create(['name' => 'Audi A4', 'slug' => 'a4']);
+    $derivedA4 = $audi->models()->create(['name' => 'A4', 'slug' => 'a4']);
+
+    CarListing::factory()->create(['title' => 'Audi A4 one', 'is_active' => true, 'car_make_id' => $audi->id, 'car_model_id' => $catalogA4->id]);
+    CarListing::factory()->create(['title' => 'Audi A4 two', 'is_active' => true, 'car_make_id' => $audi->id, 'car_model_id' => $derivedA4->id]);
+
+    $models = collect(Livewire::test('pages.car-listings')->set('make', 'audi')->get('models'))
+        ->where('slug', 'a4');
+
+    expect($models)->toHaveCount(1)
+        ->and($models->first()['count'])->toBe(2);
+});
+
 it('matches the canonical make name in search even when the title uses an alias', function (): void {
     seedCatalogListings();
 

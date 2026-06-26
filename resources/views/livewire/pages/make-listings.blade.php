@@ -22,7 +22,7 @@ class extends Component {
         $resolved = CarMake::where('slug', $make)->firstOrFail();
 
         abort_unless(
-            CarListing::query()->where('is_active', true)->where('car_make_id', $resolved->id)->exists(),
+            CarListing::query()->where('is_active', true)->priced()->where('car_make_id', $resolved->id)->exists(),
             404
         );
 
@@ -39,6 +39,7 @@ class extends Component {
     {
         return CarListing::query()
             ->where('is_active', true)
+            ->priced()
             ->where('car_make_id', $this->carMake->id)
             ->orderByRaw('COALESCE(published_at, created_at) desc')
             ->paginate(15);
@@ -52,6 +53,7 @@ class extends Component {
     {
         $row = CarListing::query()
             ->where('is_active', true)
+            ->priced()
             ->where('car_make_id', $this->carMake->id)
             ->selectRaw('count(*) as count, min(price) as min_price, max(price) as max_price')
             ->first();
@@ -109,8 +111,8 @@ class extends Component {
     public function topModels(): array
     {
         return $this->carMake->models()
-            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)])
-            ->whereHas('listings', fn ($q) => $q->where('is_active', true))
+            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)->priced()])
+            ->whereHas('listings', fn ($q) => $q->where('is_active', true)->priced())
             ->orderByDesc('count')
             ->limit(12)
             ->get(['id', 'name', 'slug'])
