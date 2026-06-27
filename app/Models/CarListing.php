@@ -26,8 +26,9 @@ class CarListing extends Model
     /**
      * Placeholder / junk prices that sources use instead of a real value:
      * the explicit sentinel, repeated-digit prices (e.g. 1111111) and
-     * sequential prices (e.g. 123456789). Only prices of 6+ digits are
-     * treated as junk so plausible real prices (e.g. 5555) are left alone.
+     * sequential prices (e.g. 12345678). Only prices of 6 to 8 digits are
+     * treated as junk: shorter prices (e.g. 5555) are plausible real values,
+     * and the `price` column is decimal(10,2) so it cannot hold 9+ digits.
      *
      * @return list<int>
      */
@@ -35,12 +36,12 @@ class CarListing extends Model
     {
         $prices = [self::UNPRICED_SENTINEL];
 
-        foreach (range(6, 9) as $length) {
+        foreach (range(6, 8) as $length) {
             foreach (range(1, 9) as $digit) {
                 $prices[] = (int) str_repeat((string) $digit, $length);
             }
 
-            $prices[] = (int) substr('123456789', 0, $length);
+            $prices[] = (int) substr('12345678', 0, $length);
         }
 
         return array_values(array_unique($prices));

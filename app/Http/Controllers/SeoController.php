@@ -30,6 +30,7 @@ class SeoController extends Controller
         $xml = SitemapCache::remember("page.{$page}", function () use ($page): string {
             $listings = CarListing::query()
                 ->active()
+                ->priced()
                 ->select(['id', 'title', 'updated_at'])
                 ->orderBy('id')
                 ->forPage($page, self::URLS_PER_SITEMAP)
@@ -49,6 +50,7 @@ class SeoController extends Controller
         $xml = SitemapCache::remember('makes', function (): string {
             $makeIds = CarListing::query()
                 ->where('is_active', true)
+                ->priced()
                 ->whereNotNull('car_make_id')
                 ->distinct()
                 ->pluck('car_make_id');
@@ -81,7 +83,7 @@ class SeoController extends Controller
      */
     private function pageCount(): int
     {
-        $count = SitemapCache::remember('count', fn (): int => CarListing::query()->active()->count());
+        $count = SitemapCache::remember('count', fn (): int => CarListing::query()->active()->priced()->count());
 
         return max(1, (int) ceil($count / self::URLS_PER_SITEMAP));
     }

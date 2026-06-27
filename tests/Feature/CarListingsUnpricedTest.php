@@ -31,9 +31,9 @@ it('hides listings with the placeholder price from the search results', function
 it('the priced scope filters out sentinel, repeated-digit and sequential prices', function (): void {
     CarListing::factory()->count(2)->create(['price' => 5000]);
     CarListing::factory()->create(['price' => CarListing::UNPRICED_SENTINEL]);
-    CarListing::factory()->create(['price' => 111111111]);
+    CarListing::factory()->create(['price' => 11111111]);
     CarListing::factory()->create(['price' => 1111111]);
-    CarListing::factory()->create(['price' => 123456789]);
+    CarListing::factory()->create(['price' => 12345678]);
     CarListing::factory()->create(['price' => 123456]);
 
     expect(CarListing::query()->priced()->count())->toBe(2);

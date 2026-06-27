@@ -23,6 +23,7 @@ class extends Component {
     {
         $counts = CarListing::query()
             ->where('is_active', true)
+            ->priced()
             ->whereNotNull('car_make_id')
             ->selectRaw('car_make_id, count(*) as total')
             ->groupBy('car_make_id')
