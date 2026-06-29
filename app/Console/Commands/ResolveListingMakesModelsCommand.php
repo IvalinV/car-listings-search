@@ -18,7 +18,9 @@ class ResolveListingMakesModelsCommand extends Command
         $noMake = 0;
         $noModel = 0;
 
-        CarListing::query()->chunkById(200, function ($listings) use ($resolver, &$processed, &$noMake, &$noModel): void {
+        CarListing::query()
+            ->whereNull('car_make_id')
+            ->chunkById(200, function ($listings) use ($resolver, &$processed, &$noMake, &$noModel): void {
             foreach ($listings as $listing) {
                 $resolved = $resolver->resolve($listing->title);
 
