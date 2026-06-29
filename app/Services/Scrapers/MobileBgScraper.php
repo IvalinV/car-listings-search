@@ -69,6 +69,40 @@ class MobileBgScraper extends Scraper
     }
 
     /**
+     * @return array<int, array{name: string, slug: null}>
+     *
+     * @throws ConnectionException
+     */
+    public function scrapeMakes(): array
+    {
+        $response = Http::withHeaders($this->browserHeaders())
+            ->get('https://www.mobile.bg/');
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $crawler = new Crawler($response->body());
+        $makes = [];
+
+        $crawler->filter('#akSearchMarki .a')->each(function (Crawler $node) use (&$makes): void {
+            $spans = $node->filter('span');
+
+            if ($spans->count() === 0) {
+                return;
+            }
+
+            $name = trim($spans->first()->text(''));
+
+            if ($name !== '') {
+                $makes[] = ['name' => $name, 'slug' => null];
+            }
+        });
+
+        return $makes;
+    }
+
+    /**
      * Derive the publication date from a listing link.
      *
      * mobile.bg listing IDs embed the creation Unix timestamp: dropping the

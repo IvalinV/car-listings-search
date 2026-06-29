@@ -61,6 +61,33 @@ class Car24Scraper extends Scraper
     }
 
     /**
+     * @return array<int, array{name: string, slug: string|null}>
+     *
+     * @throws ConnectionException
+     */
+    public function scrapeMakes(): array
+    {
+        $response = Http::withHeaders($this->browserHeaders())
+            ->get('https://api.car24.bg/mobile_api/brands');
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $popular = Arr::map(
+            $response->json('data.marki', []),
+            fn (array $pair): array => ['name' => $pair[0], 'slug' => $pair[1] ?? null],
+        );
+
+        $other = Arr::map(
+            $response->json('data.markiOther', []),
+            fn (array $brand): array => ['name' => $brand['brand'], 'slug' => $brand['sef'] ?? null],
+        );
+
+        return [...$popular, ...$other];
+    }
+
+    /**
      * car24.bg soft-deletes: the public /obiava/ URL 301s a removed listing to
      * a category page (HTTP 200), so the HTML is unreliable. The mobile API
      * returns the advert only while it is live (data.advert is null once the

@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\CarListing;
+use App\Models\CarMake;
+use App\Models\CarModel;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -37,6 +39,12 @@ class extends Component {
 
     #[Url]
     public string $location = '';
+
+    #[Url]
+    public string $make = '';
+
+    #[Url]
+    public string $model = '';
 
     #[Url]
     public string $sortBy = 'published_at';
@@ -86,6 +94,17 @@ class extends Component {
         $this->resetPage();
     }
 
+    public function updatedMake(): void
+    {
+        $this->model = '';
+        $this->resetPage();
+    }
+
+    public function updatedModel(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatedSortBy(): void
     {
         $this->resetPage();
@@ -93,7 +112,7 @@ class extends Component {
 
     public function clearFilters(): void
     {
-        $this->reset(['search', 'fuelType', 'transmission', 'minPrice', 'maxPrice', 'minYear', 'maxYear', 'location']);
+        $this->reset(['search', 'fuelType', 'transmission', 'minPrice', 'maxPrice', 'minYear', 'maxYear', 'location', 'make', 'model']);
         $this->resetPage();
     }
 
@@ -120,6 +139,8 @@ class extends Component {
         if ($this->minYear) $count++;
         if ($this->maxYear) $count++;
         if ($this->location) $count++;
+        if ($this->make) $count++;
+        if ($this->model) $count++;
         return $count;
     }
 
@@ -169,15 +190,106 @@ class extends Component {
            ->toArray();
     }
 
+    protected function selectedMake(): ?CarMake
+    {
+        if ($this->make === '' || $this->make === 'unspecified') {
+            return null;
+        }
+
+        return CarMake::where('slug', $this->make)->first();
+    }
+
+    #[Computed]
+    public function makes(): array
+    {
+        $counts = CarListing::query()
+            ->where('is_active', true)
+            ->priced()
+            ->whereNotNull('car_make_id')
+            ->selectRaw('car_make_id, count(*) as total')
+            ->groupBy('car_make_id')
+            ->pluck('total', 'car_make_id');
+
+        $makes = CarMake::whereIn('id', $counts->keys())
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $counts[$m->id]])
+            ->toArray();
+
+        $nullMakeCount = CarListing::where('is_active', true)->priced()->whereNull('car_make_id')->count();
+
+        if ($nullMakeCount > 0) {
+            $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка', 'count' => $nullMakeCount];
+        }
+
+        return $makes;
+    }
+
+    #[Computed]
+    public function models(): array
+    {
+        $make = $this->selectedMake();
+
+        if ($make === null) {
+            return [];
+        }
+
+        $models = $make->models()
+            ->withCount(['listings as count' => fn ($q) => $q->where('is_active', true)->priced()])
+            ->whereHas('listings', fn ($q) => $q->where('is_active', true)->priced())
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->groupBy('slug')
+            ->map(fn ($group): array => [
+                'slug' => $group->first()->slug,
+                'name' => $group->first()->name,
+                'count' => $group->sum('count'),
+            ])
+            ->values()
+            ->toArray();
+
+        $nullModelCount = CarListing::where('is_active', true)
+            ->priced()
+            ->where('car_make_id', $make->id)
+            ->whereNull('car_model_id')
+            ->count();
+
+        if ($nullModelCount > 0) {
+            $models[] = ['slug' => 'unspecified', 'name' => 'Без модел', 'count' => $nullModelCount];
+        }
+
+        return $models;
+    }
+
     #[Computed]
     public function listings(): \Illuminate\Pagination\LengthAwarePaginator|array
     {
+        $make = $this->selectedMake();
+        $modelIds = [];
+
+        if ($make !== null && $this->model !== '' && $this->model !== 'unspecified') {
+            $modelIds = $make->models()->where('slug', $this->model)->pluck('id')->all();
+        }
+
         return CarListing::query()
             ->where('is_active', true)
-            ->when($this->search, fn ($q) => $q->where(function ($q) {
-                $q->where('title', 'like', '%' . $this->search . '%')
-                  ->orWhere('description', 'like', '%' . $this->search . '%');
-            }))
+            ->priced()
+            ->when($this->search, function ($q) {
+                $term = $this->search;
+                $makeIds = CarMake::where('name', 'like', '%' . $term . '%')->pluck('id');
+                $modelIds = CarModel::where('name', 'like', '%' . $term . '%')->pluck('id');
+
+                $q->where(function ($q) use ($term, $makeIds, $modelIds) {
+                    $q->where('title', 'like', '%' . $term . '%')
+                      ->orWhere('description', 'like', '%' . $term . '%')
+                      ->when($makeIds->isNotEmpty(), fn ($q) => $q->orWhereIn('car_make_id', $makeIds))
+                      ->when($modelIds->isNotEmpty(), fn ($q) => $q->orWhereIn('car_model_id', $modelIds));
+                });
+            })
+            ->when($this->make === 'unspecified', fn ($q) => $q->whereNull('car_make_id'))
+            ->when($make, fn ($q) => $q->where('car_make_id', $make->id))
+            ->when($make && $this->model === 'unspecified', fn ($q) => $q->whereNull('car_model_id'))
+            ->when($modelIds, fn ($q) => $q->whereIn('car_model_id', $modelIds))
             ->when($this->fuelType, fn ($q) => $q->where('fuel_type', $this->fuelType))
             ->when($this->transmission, fn ($q) => $q->where('transmission', $this->transmission))
             ->when($this->location, fn ($q) => $q->where('location', 'LIKE', "%$this->location%"))
@@ -209,27 +321,6 @@ class extends Component {
         }
     }
 
-    public function getSource($url)
-    {
-        if (\Str::contains($url, 'cars.bg')) {
-            return 'cars.bg';
-        } else if (\Str::contains($url, 'car24.bg')) {
-            return 'car24.bg';
-        } else if (\Str::contains($url, 'mobile.bg')){
-            return 'mobile.bg';
-        } else if(\Str::contains($url, 'auto.bg')){
-            return 'auto.bg';
-        }
-    }
-
-    public function formatImageUrl($url)
-    {
-        if (!is_null($url) && !str_starts_with($url, 'https://')) {
-            return "https://$url";
-        }
-
-        return $url;
-    }
 }
 ?>
 
@@ -303,6 +394,37 @@ class extends Component {
                         placeholder="Марка, модел..."
                         class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     >
+                </div>
+
+                {{-- Make --}}
+                <div>
+                    <label for="make" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Марка</label>
+                    <select
+                        wire:model.live="make"
+                        id="make"
+                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    >
+                        <option value="">Всички</option>
+                        @foreach($this->makes as $makeOption)
+                            <option value="{{ $makeOption['slug'] }}">{{ $makeOption['name'] }} ({{ $makeOption['count'] }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Model --}}
+                <div>
+                    <label for="model" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Модел</label>
+                    <select
+                        wire:model.live="model"
+                        id="model"
+                        @disabled($this->make === '')
+                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    >
+                        <option value="">Всички</option>
+                        @foreach($this->models as $modelOption)
+                            <option value="{{ $modelOption['slug'] }}">{{ $modelOption['name'] }} ({{ $modelOption['count'] }})</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 {{-- Fuel Type --}}
@@ -431,17 +553,17 @@ class extends Component {
             {{-- Results Header --}}
             <div class="mb-4 flex items-center justify-between">
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                    <span wire:loading.remove wire:target="search, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
+                    <span wire:loading.remove wire:target="search, make, model, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
                         Намерени <strong>{{ $this->listings->total() }}</strong> обяви
                     </span>
-                    <span wire:loading wire:target="search, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
+                    <span wire:loading wire:target="search, make, model, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection">
                         Зареждане...
                     </span>
                 </p>
             </div>
 
             {{-- Loading Overlay --}}
-            <div wire:loading.delay wire:target="search, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection, gotoPage, previousPage, nextPage" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+            <div wire:loading.delay wire:target="search, make, model, fuelType, transmission, location, minPrice, maxPrice, minYear, maxYear, sortBy, sortDirection, gotoPage, previousPage, nextPage" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
                 <div class="rounded-lg bg-white px-6 py-4 shadow-lg dark:bg-gray-800">
                     <div class="flex items-center gap-3">
                         <svg class="h-5 w-5 animate-spin text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -462,119 +584,7 @@ class extends Component {
             @if($this->listings->count() > 0)
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 py-5">
                     @foreach($this->listings as $car)
-                        <a
-                            href="{{ url('/cars/' . $car->id) }}"
-                            wire:key="car-{{ $car->id }}"
-                            wire:navigate
-                            class="group flex flex-col overflow-hidden rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md dark:bg-gray-800"
-                        >
-                            {{-- Image --}}
-                            <div class="aspect-4/3 w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
-                                @if($car->image_url)
-                                    <img
-                                        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                        src="{{ $this->formatImageUrl($car->image_url) }}"
-                                        alt="{{ $car->title }}"
-                                        loading="lazy"
-                                    />
-                                    <div class="hidden h-full w-full items-center justify-center text-gray-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                @else
-                                    <div class="flex h-full w-full items-center justify-center text-gray-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                @endif
-                            </div>
-
-                            {{-- Content --}}
-                            <div class="flex flex-1 flex-col p-4">
-                                {{-- Badges --}}
-                                <div class="mb-2 flex flex-wrap gap-2">
-                                    @if($car->fuel_type)
-                                        <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                                            {{ __("fuels.$car->fuel_type") }}
-                                        </span>
-                                    @endif
-                                    @if($car->transmission)
-                                        <span class="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                                            {{ __("transmission.$car->transmission") }}
-                                        </span>
-                                    @endif
-                                </div>
-
-                                {{-- Title --}}
-                                <h3 class="mb-1 line-clamp-2 text-lg font-semibold text-gray-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
-                                    {{ $car->title ?? 'Без заглавие' }}
-                                </h3>
-
-                                {{-- Location --}}
-                                @if($car->location)
-                                    <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="mr-1 inline-block h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-                                        </svg>
-                                        {{ $car->location }}
-                                    </p>
-                                @endif
-
-                                {{-- Details --}}
-                                <div class="mb-2 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                                    <span>{{ $car->year }} г.</span>
-                                    <span class="text-gray-300 dark:text-gray-600">|</span>
-                                    <span>{{ number_format($car->mileage, 0, ',', ' ') }} км</span>
-                                </div>
-
-                                {{-- Price - pushed to bottom --}}
-                                <div class="mt-auto">
-                                    <span class="text-xl font-bold text-blue-600 dark:text-blue-400">
-                                        {{ number_format($car->price, 0, ',', ' ') }} EUR
-                                    </span>
-                                    <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">
-                                        ({{ number_format($car->price_bgn, 0, ',', ' ') }} лв)
-                                    </span>
-                                </div>
-
-                                {{-- Publication dates & per-source badges --}}
-                                @php($firstPublished = $car->firstPublishedAt())
-                                @if($car->source_dates && count($car->source_dates) > 0)
-                                    <div class="mt-3 border-t border-gray-100 pt-2 dark:border-gray-700">
-                                        @if($firstPublished)
-                                            <p class="mb-1.5 text-xs text-gray-500 dark:text-gray-400">
-                                                Създадена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $firstPublished->format('d.m.Y') }}</span>
-                                                @if($car->published_at && $car->published_at->gt($firstPublished))
-                                                    · Обновена: <span class="font-medium text-gray-700 dark:text-gray-300">{{ $car->published_at->format('d.m.Y') }}</span>
-                                                @endif
-                                            </p>
-                                        @endif
-                                        <div class="flex flex-wrap gap-1.5">
-                                            @foreach($car->source_dates as $source => $date)
-                                                <span
-                                                    wire:key="src-{{ $car->id }}-{{ $source }}"
-                                                    class="inline-flex flex-col rounded bg-gray-100 px-2 py-1 leading-tight text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                                                >
-                                                    <span class="text-xs font-medium">{{ $source }}</span>
-                                                    <span class="text-[11px] text-gray-500 dark:text-gray-500">{{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}</span>
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @elseif($car->source_urls && count($car->source_urls) > 0)
-                                    {{-- Records not yet re-scraped have no per-source dates: show plain badges. --}}
-                                    <div class="mt-2 flex flex-wrap gap-1.5">
-                                        @foreach($car->source_urls as $source => $url)
-                                            <span wire:key="srcurl-{{ $car->id }}-{{ $source }}" class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                                                {{ $this->getSource($url)}}
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-                        </a>
+                        <x-car-listing-card :listing="$car" wire:key="car-{{ $car->id }}" />
                     @endforeach
                 </div>
 

@@ -77,7 +77,7 @@ class extends Component {
         }
 
         if ($car->image_url) {
-            $data['image'] = $this->formatImageUrl($car->image_url);
+            $data['image'] = $car->displayImageUrl();
         }
 
         if ($car->fuel_type) {
@@ -91,27 +91,6 @@ class extends Component {
         return $data;
     }
 
-    public function getSource($url)
-    {
-        if (\Str::contains($url, 'cars.bg')) {
-            return 'cars.bg';
-        } else if (\Str::contains($url, 'car24.bg')) {
-            return 'car24.bg';
-        } else if (\Str::contains($url, 'mobile.bg')){
-            return 'mobile.bg';
-        } else if(\Str::contains($url, 'auto.bg')){
-            return 'auto.bg';
-        }
-    }
-
-    public function formatImageUrl($url)
-    {
-        if (!is_null($url) && !str_starts_with($url, 'https://')) {
-            return "https://$url";
-        }
-
-        return $url;
-    }
 }
 ?>
 
@@ -127,8 +106,8 @@ class extends Component {
         <meta name="twitter:title" content="{{ $carListing->title }}">
         <meta name="twitter:description" content="{{ $this->metaDescription() }}">
         @if($carListing->image_url)
-            <meta property="og:image" content="{{ $this->formatImageUrl($carListing->image_url) }}">
-            <meta name="twitter:image" content="{{ $this->formatImageUrl($carListing->image_url) }}">
+            <meta property="og:image" content="{{ $carListing->displayImageUrl() }}">
+            <meta name="twitter:image" content="{{ $carListing->displayImageUrl() }}">
         @endif
         <script type="application/ld+json">{!! json_encode($this->structuredData(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
     @endpush
@@ -196,7 +175,7 @@ class extends Component {
                 <div class="flex items-center justify-center">
                     <img
                         class="max-h-96 w-auto rounded-lg object-contain"
-                        src="{{ $this->formatImageUrl($carListing->image_url) }}"
+                        src="{{ $carListing->displayImageUrl() }}"
                         alt="{{ $carListing->title }}"
                     />
                 </div>
@@ -285,8 +264,8 @@ class extends Component {
                 <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Вижте пълната обява в:</h2>
                 <div class="flex flex-wrap gap-3">
                     @foreach($carListing->source_urls as $url)
-                        @php($source = $this->getSource($url))
-                        @php($sourceDate = $carListing->source_dates[$source] ?? null)
+                        @php($source = $carListing->sourceLabel($url))
+                        @php($sourceDate = $carListing->sourceDate($source))
                         <a
                             href="{{ $url }}"
                             target="_blank"
@@ -295,9 +274,9 @@ class extends Component {
                             class="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                         >
                             <span class="flex flex-col items-start leading-tight">
-                                <span>{{ $source }}</span>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $source }}</span>
                                 @if($sourceDate)
-                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ \Carbon\Carbon::parse($sourceDate)->format('d.m.Y') }}</span>
+                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ $sourceDate->format('d.m.Y') }}</span>
                                 @endif
                             </span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

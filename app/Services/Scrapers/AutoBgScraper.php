@@ -99,6 +99,75 @@ class AutoBgScraper extends Scraper
     }
 
     /**
+     * @return array<int, array{name: string, slug: string|null}>
+     *
+     * @throws ConnectionException
+     */
+    public function scrapeMakes(): array
+    {
+        $response = Http::withHeaders($this->browserHeaders())
+            ->get('https://www.auto.bg/obiavi/avtomobili-dzhipove');
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $crawler = new Crawler($response->body());
+        $makes = [];
+
+        $crawler->filter('a[href^="/obiavi/avtomobili-dzhipove/"]')->each(function (Crawler $node) use (&$makes): void {
+            $href = (string) $node->attr('href');
+
+            if (! preg_match('#^/obiavi/avtomobili-dzhipove/([a-z0-9-]+)$#', $href, $matches)) {
+                return;
+            }
+
+            $name = trim($node->text(''));
+
+            if ($name !== '') {
+                $makes[$matches[1]] = ['name' => $name, 'slug' => $matches[1]];
+            }
+        });
+
+        return array_values($makes);
+    }
+
+    /**
+     * @return array<int, array{name: string, slug: string}>
+     *
+     * @throws ConnectionException
+     */
+    public function scrapeModels(string $makeSlug): array
+    {
+        $response = Http::withHeaders($this->browserHeaders())
+            ->get("https://www.auto.bg/obiavi/avtomobili-dzhipove/{$makeSlug}");
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $crawler = new Crawler($response->body());
+        $models = [];
+        $pattern = '#^/obiavi/avtomobili-dzhipove/'.preg_quote($makeSlug, '#').'/([a-z0-9-]+)$#';
+
+        $crawler->filter('a[href^="/obiavi/avtomobili-dzhipove/'.$makeSlug.'/"]')->each(function (Crawler $node) use (&$models, $pattern): void {
+            $href = (string) $node->attr('href');
+
+            if (! preg_match($pattern, $href, $matches)) {
+                return;
+            }
+
+            $name = trim($node->text(''));
+
+            if ($name !== '') {
+                $models[$matches[1]] = ['name' => $name, 'slug' => $matches[1]];
+            }
+        });
+
+        return array_values($models);
+    }
+
+    /**
      * A live auto.bg listing returns 200 on its /obiava/ URL. A removed one is
      * redirected (301) to the brand/model category page (/obiavi/...), and a
      * never-existed ID returns a genuine 404.
