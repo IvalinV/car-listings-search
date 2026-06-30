@@ -4,7 +4,10 @@ namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
 use Carbon\Carbon;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -178,6 +181,21 @@ class AutoBgScraper extends Scraper
             ->withHeaders($this->browserHeaders())
             ->get($url);
 
+        if ($response->notFound()) {
+            return true;
+        }
+
+        return $response->redirect()
+            && str_contains((string) $response->header('Location'), '/obiavi/');
+    }
+
+    public function poolRemovalProbe(PendingRequest $request, string $url): PromiseInterface
+    {
+        return $request->withoutRedirecting()->withHeaders($this->browserHeaders())->get($url);
+    }
+
+    public function isRemovedFromResponse(Response $response, string $url): bool
+    {
         if ($response->notFound()) {
             return true;
         }
