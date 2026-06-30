@@ -4,7 +4,10 @@ namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
 use Carbon\Carbon;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
@@ -125,6 +128,17 @@ class CarsBgScraper extends Scraper
             ->withHeaders($this->browserHeaders())
             ->get($url);
 
+        return $response->redirect()
+            && str_contains((string) $response->header('Location'), 'status_page.php');
+    }
+
+    public function poolRemovalProbe(PendingRequest $request, string $url): PromiseInterface
+    {
+        return $request->withoutRedirecting()->withHeaders($this->browserHeaders())->get($url);
+    }
+
+    public function isRemovedFromResponse(Response $response, string $url): bool
+    {
         return $response->redirect()
             && str_contains((string) $response->header('Location'), 'status_page.php');
     }

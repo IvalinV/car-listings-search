@@ -3,6 +3,9 @@
 namespace App\Services\Scrapers;
 
 use Carbon\Carbon;
+use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 class Scraper implements ScraperInterface
@@ -44,6 +47,23 @@ class Scraper implements ScraperInterface
     public function isListingRemoved(string $url): bool
     {
         return Http::withHeaders($this->browserHeaders())->get($url)->notFound();
+    }
+
+    /**
+     * Issue the removal probe on the given (possibly pool-bound) request.
+     * Default mirrors mobile.bg: a plain GET with browser headers.
+     */
+    public function poolRemovalProbe(PendingRequest $request, string $url): PromiseInterface
+    {
+        return $request->withHeaders($this->browserHeaders())->get($url);
+    }
+
+    /**
+     * Interpret a non-transient response. Default treats a 404 as removed.
+     */
+    public function isRemovedFromResponse(Response $response, string $url): bool
+    {
+        return $response->notFound();
     }
 
     /**

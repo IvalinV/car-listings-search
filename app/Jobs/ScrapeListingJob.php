@@ -114,6 +114,7 @@ class ScrapeListingJob implements ShouldQueue
                 'source_urls' => json_encode($sources),
                 'source_dates' => json_encode($sourceDates),
                 'published_at' => $this->latestUpdate($sourceDates),
+                'checked_at' => now(),
             ], 'fingerprint');
         }
 

@@ -4,8 +4,11 @@ namespace App\Services\Scrapers;
 
 use App\Misc\LogChannels;
 use Carbon\Carbon;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -101,6 +104,40 @@ class Car24Scraper extends Scraper
     public function isListingRemoved(string $url): bool
     {
         return is_null($this->getListing($url));
+    }
+
+    /**
+     * Extract the (ida, title) pair the mobile API needs from an /obiava/ URL.
+     *
+     * @return array{0: ?string, 1: string}
+     */
+    private function advertQuery(string $url): array
+    {
+        preg_match('/[\\\\\/]obiava[\\\\\/](\d+)(?=[\\\\\/]|$)/', $url, $matches);
+
+        return [$matches[1] ?? null, Str::afterLast($url, '/')];
+    }
+
+    public function poolRemovalProbe(PendingRequest $request, string $url): PromiseInterface
+    {
+        [$id, $title] = $this->advertQuery($url);
+
+        return $request->acceptJson()
+            ->withQueryParameters(['ida' => $id, 'title' => $title])
+            ->get($this->url_single_listing);
+    }
+
+    public function isRemovedFromResponse(Response $response, string $url): bool
+    {
+        if ($response->status() === 404) {
+            return true;
+        }
+
+        if (! $response->successful()) {
+            return false;
+        }
+
+        return is_null($response->json('data.advert'));
     }
 
     /**
