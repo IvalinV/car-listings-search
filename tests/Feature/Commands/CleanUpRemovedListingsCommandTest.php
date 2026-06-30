@@ -64,6 +64,17 @@ it('skips a listing when a source is transient (5xx) — no delete, checked_at u
         ->and($l->fresh()->checked_at)->toBeNull();
 });
 
+it('skips a listing when a source is blocked (403) — no delete, checked_at untouched', function (): void {
+    $l = listing(['https://www.mobile.bg/obiava-123-x'], null);
+
+    Http::fake(['*mobile.bg*' => Http::response('', 403)]);
+
+    $this->artisan('listings:clean-up-removed')->assertSuccessful();
+
+    expect(CarListing::find($l->id))->not->toBeNull()
+        ->and($l->fresh()->checked_at)->toBeNull();
+});
+
 it('respects --limit and probes the oldest checked_at first', function (): void {
     $old = listing(['https://www.mobile.bg/obiava-OLD-x'], null);                       // null = oldest
     $fresh = listing(['https://www.mobile.bg/obiava-FRESH-x'], now()->toDateTimeString());

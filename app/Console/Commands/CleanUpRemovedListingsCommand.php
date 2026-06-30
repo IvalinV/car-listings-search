@@ -24,8 +24,9 @@ class CleanUpRemovedListingsCommand extends Command
 
     public function handle(): void
     {
-        $limit = (int) ($this->option('limit') ?: config('listings.cleanup.batch_limit'));
+        $limit = max(1, (int) ($this->option('limit') ?: config('listings.cleanup.batch_limit')));
         $concurrency = max(1, (int) config('listings.cleanup.pool_concurrency'));
+        $pauseMs = max(0, (int) config('listings.cleanup.pool_pause_ms'));
 
         Log::channel(LogChannels::LISTINGS)->info("Listings clean up started (limit $limit).");
 
@@ -36,7 +37,7 @@ class CleanUpRemovedListingsCommand extends Command
             ->get();
 
         $probes = $this->buildProbes($listings);
-        $classifications = $this->classifyAll($probes, $concurrency);
+        $classifications = $this->classifyAll($probes, $concurrency, $pauseMs);
 
         foreach ($listings as $listing) {
             $this->resolveListing($listing, $classifications[$listing->id] ?? []);
@@ -73,7 +74,9 @@ class CleanUpRemovedListingsCommand extends Command
     }
 
     /**
-     * Round-robin the per-host queues so a single host is never hammered.
+     * Round-robin the per-host queues so each fixed-size pool chunk is spread
+     * across hosts rather than hitting one host with a dense burst. Sustained
+     * request rate is bounded separately by the inter-chunk pause in classifyAll().
      *
      * @param  array<string, list<array{listing_id:int,url:string,scraper:Scraper}>>  $byHost
      * @return list<array{listing_id:int,url:string,scraper:Scraper}>
@@ -106,19 +109,19 @@ class CleanUpRemovedListingsCommand extends Command
      * @param  list<array{listing_id:int,url:string,scraper:Scraper}>  $probes
      * @return array<int, array<string, string>>
      */
-    private function classifyAll(array $probes, int $concurrency): array
+    private function classifyAll(array $probes, int $concurrency, int $pauseMs): array
     {
         $result = [];
+        $chunks = array_chunk($probes, $concurrency);
+        $lastChunk = count($chunks) - 1;
 
-        foreach (array_chunk($probes, $concurrency) as $chunk) {
-            $responses = Http::pool(function (Pool $pool) use ($chunk): array {
-                $promises = [];
-
+        foreach ($chunks as $index => $chunk) {
+            // Http::pool keys results by the Pool::as() key; the closure's return
+            // value is ignored, so each probe is registered under its chunk index.
+            $responses = Http::pool(function (Pool $pool) use ($chunk): void {
                 foreach ($chunk as $i => $probe) {
-                    $promises[(string) $i] = $probe['scraper']->poolRemovalProbe($pool->as((string) $i), $probe['url']);
+                    $probe['scraper']->poolRemovalProbe($pool->as((string) $i), $probe['url']);
                 }
-
-                return $promises;
             });
 
             foreach ($chunk as $i => $probe) {
@@ -128,14 +131,19 @@ class CleanUpRemovedListingsCommand extends Command
                     $probe['url'],
                 );
             }
+
+            if ($pauseMs > 0 && $index < $lastChunk) {
+                usleep($pauseMs * 1000);
+            }
         }
 
         return $result;
     }
 
     /**
-     * Transient failures (connection error, 5xx, 429) are 'unknown' and never
-     * treated as removed; otherwise the scraper interprets the response.
+     * Transient or blocked responses (connection error, 5xx, 429, 403) are
+     * 'unknown' and never treated as removed, so the listing is retried rather
+     * than falsely refreshed; otherwise the scraper interprets the response.
      */
     private function classify(mixed $response, Scraper $scraper, string $url): string
     {
@@ -143,7 +151,7 @@ class CleanUpRemovedListingsCommand extends Command
             return 'unknown';
         }
 
-        if ($response->serverError() || $response->status() === 429) {
+        if ($response->serverError() || $response->tooManyRequests() || $response->forbidden()) {
             return 'unknown';
         }
 
