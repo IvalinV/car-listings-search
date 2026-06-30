@@ -130,8 +130,12 @@ Otherwise it is `removed`/`alive` per `isRemovedFromResponse`.
 - Locked-in defaults: **`--limit=5000`, hourly** → ~7-min runs, full **~1.3-day**
   cycle. Add a config file (new `config/listings.php`, following Laravel config
   conventions; values read via `config()`, never `env()` outside config) holding:
-  `cleanup.batch_limit` (5000), `cleanup.pool_concurrency` (25),
-  `cleanup.per_host_concurrency` (10).
+  `cleanup.batch_limit` (5000), `cleanup.pool_concurrency` (25).
+- **Per-host politeness** is achieved without a separate semaphore: before
+  chunking, probes are **round-robin interleaved by host**, so each
+  `pool_concurrency`-sized chunk is spread across the (up to 4) hosts rather than
+  hammering one. Chunks are processed sequentially, bounding total in-flight
+  requests to `pool_concurrency`.
 
 ### Timing basis
 
