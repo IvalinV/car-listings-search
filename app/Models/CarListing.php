@@ -54,6 +54,7 @@ class CarListing extends Model
             'source_dates' => 'array',
             'is_active' => 'boolean',
             'published_at' => 'datetime',
+            'checked_at' => 'datetime',
         ];
     }
 

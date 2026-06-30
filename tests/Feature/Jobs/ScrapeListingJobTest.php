@@ -2,6 +2,7 @@
 
 use App\Jobs\ScrapeListingJob;
 use App\Models\CarListing;
+use App\Models\CarMake;
 use App\Services\Scrapers\MobileBgScraper;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,5 +106,24 @@ it('resolves and stores make and model when persisting a scraped record', functi
 
     expect($listing->make->name)->toBe('Audi')
         ->and($listing->model->name)->toBe('A4')
-        ->and(\App\Models\CarMake::where('name', 'Audi')->count())->toBe(1);
+        ->and(CarMake::where('name', 'Audi')->count())->toBe(1);
+});
+
+it('stamps checked_at on a listing the scrape touches', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-06-30 12:00:00'));
+
+    persist([scrapedRecord('mobile.bg', 'www.mobile.bg/obiava-11572426012950088-audi-a4', Carbon::parse('2019-10-30 09:00:12'))]);
+
+    expect(CarListing::first()->checked_at->toDateTimeString())->toBe('2026-06-30 12:00:00');
+});
+
+it('refreshes checked_at when an existing listing is re-scraped', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-06-30 12:00:00'));
+    persist([scrapedRecord('mobile.bg', 'www.mobile.bg/obiava-11572426012950088-audi-a4', Carbon::parse('2019-10-30 09:00:12'))]);
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 08:00:00'));
+    persist([scrapedRecord('mobile.bg', 'www.mobile.bg/obiava-11572426012950088-audi-a4', Carbon::parse('2019-10-30 09:00:12'))]);
+
+    expect(CarListing::count())->toBe(1)
+        ->and(CarListing::first()->checked_at->toDateTimeString())->toBe('2026-07-01 08:00:00');
 });
