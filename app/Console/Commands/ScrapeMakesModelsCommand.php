@@ -48,7 +48,7 @@ class ScrapeMakesModelsCommand extends Command
         $canonicalNames = $normalizer->dedupe($pooled);
 
         foreach ($canonicalNames as $name) {
-            CarMake::firstOrCreate(['name' => $name], ['slug' => Str::slug($name)]);
+            CarMake::firstOrCreate(['slug' => Str::slug($name)], ['name' => $name]);
         }
 
         $this->info(count($pooled).' makes scraped, '.count($canonicalNames).' after dedupe.');

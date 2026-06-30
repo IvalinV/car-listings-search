@@ -57,6 +57,16 @@ it('scrapes, dedupes and stores makes and models', function (): void {
     expect($vw->models->pluck('name')->all())->toBe(['Golf']);
 });
 
+it('reuses an existing make whose name differs but slug collides', function (): void {
+    fakeMakeSources();
+    CarMake::factory()->create(['name' => 'Volkswagen-AG', 'slug' => 'volkswagen']);
+
+    $this->artisan('scrape:makes-models')->assertSuccessful();
+
+    expect(CarMake::where('slug', 'volkswagen')->count())->toBe(1)
+        ->and(CarMake::where('name', 'Volkswagen-AG')->exists())->toBeTrue();
+});
+
 it('is idempotent across repeated runs', function (): void {
     fakeMakeSources();
 

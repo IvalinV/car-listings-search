@@ -73,8 +73,8 @@ class ListingMakeModelResolver
         $parentName = $this->modelMakes[$modelMake->name];
 
         $parent = CarMake::firstOrCreate(
-            ['name' => $parentName],
             ['slug' => Str::slug($parentName)],
+            ['name' => $parentName],
         );
 
         return ['make' => $parent, 'model' => $this->findOrCreateModel($parent, $modelMake->name)];
@@ -97,8 +97,8 @@ class ListingMakeModelResolver
 
         $canonical = $this->normalizer->canonicalize($tokens[0]);
         $make = CarMake::firstOrCreate(
-            ['name' => $canonical],
             ['slug' => Str::slug($canonical)],
+            ['name' => $canonical],
         );
 
         return [$make, 1];
