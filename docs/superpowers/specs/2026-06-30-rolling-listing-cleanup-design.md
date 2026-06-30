@@ -127,10 +127,11 @@ Otherwise it is `removed`/`alive` per `isRemovedFromResponse`.
 
 - `routes/console.php`: change the cleanup schedule from `weeklyOn(2, 0)` to
   `hourly()` with `->withoutOverlapping()` so slow runs never stack.
-- Locked-in defaults: **`--limit=5000`, hourly** → ~7-min runs, full **~1.3-day**
-  cycle. Add a config file (new `config/listings.php`, following Laravel config
-  conventions; values read via `config()`, never `env()` outside config) holding:
-  `cleanup.batch_limit` (5000), `cleanup.pool_concurrency` (25).
+- Locked-in defaults: **`--limit=5000`, hourly** → ~11–12-min runs (measured),
+  full **~1.3-day** cycle. Add a config file (new `config/listings.php`, following
+  Laravel config conventions; values read via `config()`, never `env()` outside
+  config) holding: `cleanup.batch_limit` (5000), `cleanup.pool_concurrency` (25),
+  `cleanup.pool_pause_ms` (250).
 - **Per-host politeness** is achieved without a separate semaphore: before
   chunking, probes are **round-robin interleaved by host**, so each
   `pool_concurrency`-sized chunk is spread across the (up to 4) hosts rather than
@@ -141,12 +142,17 @@ Otherwise it is `removed`/`alive` per `isRemovedFromResponse`.
 
 | Per run | Frequency | Run wall-clock | Full cycle |
 |--------:|-----------|---------------:|-----------:|
-| 2,000   | hourly    | ~3 min         | ~3.3 days  |
-| **5,000** | **hourly** | **~7 min**   | **~1.3 days** |
-| 10,000  | hourly    | ~14 min        | ~16 hours  |
+| 2,000   | hourly    | ~5 min         | ~3.3 days  |
+| **5,000** | **hourly** | **~11–12 min** | **~1.3 days** |
+| 10,000  | hourly    | ~24 min        | ~16 hours  |
 
-Assumes ~1.4 source URLs/listing, ~1.5s/request, 25 concurrent. If sources are
-slower we lower concurrency, not the model. **First cycle is heaviest** (all
+Per-run wall-clock is **measured** (two production runs of `--limit=5000` took
+~11 and ~12 min); the 2k/10k rows scale that linearly. Real throughput is
+~9–10 probes/s (slower sources than first assumed, plus the 250 ms inter-chunk
+pause). The **full-cycle** figures are unchanged: they depend on listings
+processed per day (hourly × 5000 = 120k/day), and a ~12-min run still completes
+comfortably within its hour. To shorten a run without changing the cycle, raise
+`pool_concurrency` or lower `pool_pause_ms`. **First cycle is heaviest** (all
 158k rows have `NULL checked_at` → the full backlog is probed once over ~1.3
 days); steady-state is lighter because scrape-stamping keeps fresh listings out.
 
