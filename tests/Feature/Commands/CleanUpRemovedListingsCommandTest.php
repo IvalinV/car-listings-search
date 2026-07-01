@@ -2,6 +2,7 @@
 
 use App\Models\CarListing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -68,6 +69,17 @@ it('skips a listing when a source is blocked (403) — no delete, checked_at unt
     $l = listing(['https://www.mobile.bg/obiava-123-x'], null);
 
     Http::fake(['*mobile.bg*' => Http::response('', 403)]);
+
+    $this->artisan('listings:clean-up-removed')->assertSuccessful();
+
+    expect(CarListing::find($l->id))->not->toBeNull()
+        ->and($l->fresh()->checked_at)->toBeNull();
+});
+
+it('treats a timed-out/unreachable probe as transient — no delete, checked_at untouched', function (): void {
+    $l = listing(['https://www.mobile.bg/obiava-123-x'], null);
+
+    Http::fake(['*mobile.bg*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
 
     $this->artisan('listings:clean-up-removed')->assertSuccessful();
 

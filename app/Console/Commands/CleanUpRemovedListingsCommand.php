@@ -25,6 +25,8 @@ class CleanUpRemovedListingsCommand extends Command
         $limit = max(1, (int) ($this->option('limit') ?: config('listings.cleanup.batch_limit')));
         $concurrency = max(1, (int) config('listings.cleanup.pool_concurrency'));
         $pauseMs = max(0, (int) config('listings.cleanup.pool_pause_ms'));
+        $connectTimeout = max(1, (int) config('listings.cleanup.pool_connect_timeout'));
+        $timeout = max(1, (int) config('listings.cleanup.pool_timeout'));
 
         $this->info("Listings clean up started (limit $limit).");
 
@@ -35,11 +37,11 @@ class CleanUpRemovedListingsCommand extends Command
                 ->limit($limit)
                 ->get();
 
-            $this->info('Listings loaded');
+            $this->logMemory('after listings ('.$listings->count().')');
             $probes = $this->buildProbes($listings);
-            $this->info('Probes loaded');
-            $classifications = $this->classifyAll($probes, $concurrency, $pauseMs);
-            $this->info('Classifications loaded');
+            $this->logMemory('after probes ('.count($probes).')');
+            $classifications = $this->classifyAll($probes, $concurrency, $pauseMs, $connectTimeout, $timeout);
+            $this->logMemory('after classify');
             foreach ($listings as $listing) {
                 $this->info("Processing $listing->id");
                 $this->resolveListing($listing, $classifications[$listing->id] ?? []);
@@ -50,6 +52,23 @@ class CleanUpRemovedListingsCommand extends Command
         }
 
         $this->info('Listings clean up completed.');
+    }
+
+    /**
+     * Log PHP peak heap and actual process RSS. RSS captures libcurl's native
+     * allocations (connections/TLS/buffers) that PHP's memory functions miss —
+     * the only reliable signal for HTTP-driven memory growth. Debug-only.
+     */
+    private function logMemory(string $label): void
+    {
+        $phpPeak = round(memory_get_peak_usage(true) / 1048576, 1);
+        $rss = 0.0;
+
+        if (is_readable('/proc/self/status') && preg_match('/VmRSS:\s+(\d+)/', (string) file_get_contents('/proc/self/status'), $matches)) {
+            $rss = round(((int) $matches[1]) / 1024, 1);
+        }
+
+        $this->info("[MEM] $label — php_peak={$phpPeak}MB rss={$rss}MB");
     }
 
     /**
@@ -115,7 +134,7 @@ class CleanUpRemovedListingsCommand extends Command
      * @param  list<array{listing_id:int,url:string,scraper:Scraper}>  $probes
      * @return array<int, array<string, string>>
      */
-    private function classifyAll(array $probes, int $concurrency, int $pauseMs): array
+    private function classifyAll(array $probes, int $concurrency, int $pauseMs, int $connectTimeout, int $timeout): array
     {
         $result = [];
         $chunks = array_chunk($probes, $concurrency);
@@ -124,9 +143,15 @@ class CleanUpRemovedListingsCommand extends Command
         foreach ($chunks as $index => $chunk) {
             // Http::pool keys results by the Pool::as() key; the closure's return
             // value is ignored, so each probe is registered under its chunk index.
-            $responses = Http::pool(function (Pool $pool) use ($chunk): void {
+            // The timeouts are applied here so every scraper's probe inherits them
+            // — an unbounded probe would otherwise hang the whole pool chunk.
+            $this->logMemory("chunk $index/$lastChunk (".count($chunk).' probes)');
+            $responses = Http::pool(function (Pool $pool) use ($chunk, $connectTimeout, $timeout): void {
                 foreach ($chunk as $i => $probe) {
-                    $probe['scraper']->poolRemovalProbe($pool->as((string) $i), $probe['url']);
+                    $probe['scraper']->poolRemovalProbe(
+                        $pool->as((string) $i)->connectTimeout($connectTimeout)->timeout($timeout),
+                        $probe['url'],
+                    );
                 }
             });
 
