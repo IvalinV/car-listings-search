@@ -34,12 +34,17 @@ class CleanUpRemovedListingsCommand extends Command
             ->limit($limit)
             ->get();
 
-        $probes = $this->buildProbes($listings);
-        $classifications = $this->classifyAll($probes, $concurrency, $pauseMs);
+        try {
+            $probes = $this->buildProbes($listings);
+            $classifications = $this->classifyAll($probes, $concurrency, $pauseMs);
 
-        foreach ($listings as $listing) {
-            $this->resolveListing($listing, $classifications[$listing->id] ?? []);
+            foreach ($listings as $listing) {
+                $this->resolveListing($listing, $classifications[$listing->id] ?? []);
+            }
+        } catch (\Exception $e) {
+            $this->error($e->getMessage());
         }
+
 
         $this->info('Listings clean up completed.');
     }
