@@ -163,6 +163,14 @@ class CleanUpRemovedListingsCommand extends Command
                 );
             }
 
+            // Guzzle wraps each curl response in objects that form reference
+            // cycles, so refcounting alone never frees the native libcurl memory
+            // they hold — it accumulates until cycle GC runs. Forcing collection
+            // each chunk releases the connections and keeps RSS flat; without it
+            // the process leaks ~1MB per probe and OOMs after a few hundred.
+            unset($responses);
+            gc_collect_cycles();
+
             if ($pauseMs > 0 && $index < $lastChunk) {
                 usleep($pauseMs * 1000);
             }
