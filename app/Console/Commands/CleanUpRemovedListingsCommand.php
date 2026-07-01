@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Services\Scrapers\AutoBgScraper;
 use App\Services\Scrapers\Car24Scraper;
@@ -14,7 +13,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class CleanUpRemovedListingsCommand extends Command
 {
@@ -28,7 +26,7 @@ class CleanUpRemovedListingsCommand extends Command
         $concurrency = max(1, (int) config('listings.cleanup.pool_concurrency'));
         $pauseMs = max(0, (int) config('listings.cleanup.pool_pause_ms'));
 
-        Log::channel(LogChannels::LISTINGS)->info("Listings clean up started (limit $limit).");
+        $this->info("Listings clean up started (limit $limit).");
 
         $listings = CarListing::query()
             ->orderByRaw('checked_at IS NULL DESC')
@@ -43,7 +41,7 @@ class CleanUpRemovedListingsCommand extends Command
             $this->resolveListing($listing, $classifications[$listing->id] ?? []);
         }
 
-        Log::channel(LogChannels::LISTINGS)->info('Listings clean up completed.');
+        $this->info('Listings clean up completed.');
     }
 
     /**
@@ -167,7 +165,7 @@ class CleanUpRemovedListingsCommand extends Command
     private function resolveListing(CarListing $listing, array $classByUrl): void
     {
         if (in_array('unknown', $classByUrl, true)) {
-            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint skipped (transient).");
+            $this->info("Listing $listing->fingerprint skipped (transient).");
 
             return;
         }
@@ -182,7 +180,7 @@ class CleanUpRemovedListingsCommand extends Command
 
         if ($liveUrls === []) {
             $listing->delete();
-            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint removed.");
+            $this->info("Listing $listing->fingerprint removed.");
 
             return;
         }
@@ -191,7 +189,7 @@ class CleanUpRemovedListingsCommand extends Command
 
         if (count($liveUrls) !== count($listing->source_urls)) {
             $update['source_urls'] = $liveUrls;
-            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint pruned to ".count($liveUrls).' live source(s).');
+            $this->info("Listing $listing->fingerprint pruned to ".count($liveUrls).' live source(s).');
         }
 
         $listing->update($update);
