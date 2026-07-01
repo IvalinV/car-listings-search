@@ -10,5 +10,13 @@ return [
 
         // Pause between pool chunks (ms) to bound sustained per-host request rate.
         'pool_pause_ms' => 250,
+
+        // Per-probe TCP connect timeout (seconds). Without it a host that never
+        // responds hangs the whole pool chunk indefinitely.
+        'pool_connect_timeout' => 10,
+
+        // Per-probe total request timeout (seconds). A timed-out probe surfaces
+        // as a ConnectionException, classified 'unknown' and retried next run.
+        'pool_timeout' => 20,
     ],
 ];
