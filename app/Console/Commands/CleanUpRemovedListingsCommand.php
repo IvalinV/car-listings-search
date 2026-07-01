@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Services\Scrapers\AutoBgScraper;
 use App\Services\Scrapers\Car24Scraper;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CleanUpRemovedListingsCommand extends Command
 {
@@ -28,7 +30,7 @@ class CleanUpRemovedListingsCommand extends Command
         $connectTimeout = max(1, (int) config('listings.cleanup.pool_connect_timeout'));
         $timeout = max(1, (int) config('listings.cleanup.pool_timeout'));
 
-        $this->info("Listings clean up started (limit $limit).");
+        Log::channel(LogChannels::LISTINGS)->info("Listings clean up started (limit $limit).");
 
         try {
             $listings = CarListing::query()
@@ -37,38 +39,17 @@ class CleanUpRemovedListingsCommand extends Command
                 ->limit($limit)
                 ->get();
 
-            $this->logMemory('after listings ('.$listings->count().')');
             $probes = $this->buildProbes($listings);
-            $this->logMemory('after probes ('.count($probes).')');
             $classifications = $this->classifyAll($probes, $concurrency, $pauseMs, $connectTimeout, $timeout);
-            $this->logMemory('after classify');
+
             foreach ($listings as $listing) {
-                $this->info("Processing $listing->id");
                 $this->resolveListing($listing, $classifications[$listing->id] ?? []);
-                $this->info("Listing resolved $listing->id");
             }
         } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            Log::channel(LogChannels::LISTINGS)->error($e->getMessage());
         }
 
-        $this->info('Listings clean up completed.');
-    }
-
-    /**
-     * Log PHP peak heap and actual process RSS. RSS captures libcurl's native
-     * allocations (connections/TLS/buffers) that PHP's memory functions miss —
-     * the only reliable signal for HTTP-driven memory growth. Debug-only.
-     */
-    private function logMemory(string $label): void
-    {
-        $phpPeak = round(memory_get_peak_usage(true) / 1048576, 1);
-        $rss = 0.0;
-
-        if (is_readable('/proc/self/status') && preg_match('/VmRSS:\s+(\d+)/', (string) file_get_contents('/proc/self/status'), $matches)) {
-            $rss = round(((int) $matches[1]) / 1024, 1);
-        }
-
-        $this->info("[MEM] $label — php_peak={$phpPeak}MB rss={$rss}MB");
+        Log::channel(LogChannels::LISTINGS)->info('Listings clean up completed.');
     }
 
     /**
@@ -145,7 +126,6 @@ class CleanUpRemovedListingsCommand extends Command
             // value is ignored, so each probe is registered under its chunk index.
             // The timeouts are applied here so every scraper's probe inherits them
             // — an unbounded probe would otherwise hang the whole pool chunk.
-            $this->logMemory("chunk $index/$lastChunk (".count($chunk).' probes)');
             $responses = Http::pool(function (Pool $pool) use ($chunk, $connectTimeout, $timeout): void {
                 foreach ($chunk as $i => $probe) {
                     $probe['scraper']->poolRemovalProbe(
@@ -206,7 +186,7 @@ class CleanUpRemovedListingsCommand extends Command
     private function resolveListing(CarListing $listing, array $classByUrl): void
     {
         if (in_array('unknown', $classByUrl, true)) {
-            $this->info("Listing $listing->fingerprint skipped (transient).");
+            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint skipped (transient).");
 
             return;
         }
@@ -221,7 +201,7 @@ class CleanUpRemovedListingsCommand extends Command
 
         if ($liveUrls === []) {
             $listing->delete();
-            $this->info("Listing $listing->fingerprint removed.");
+            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint removed.");
 
             return;
         }
@@ -230,7 +210,7 @@ class CleanUpRemovedListingsCommand extends Command
 
         if (count($liveUrls) !== count($listing->source_urls)) {
             $update['source_urls'] = $liveUrls;
-            $this->info("Listing $listing->fingerprint pruned to ".count($liveUrls).' live source(s).');
+            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint pruned to ".count($liveUrls).' live source(s).');
         }
 
         $listing->update($update);
