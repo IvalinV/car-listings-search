@@ -30,15 +30,20 @@ class CleanUpRemovedListingsCommand extends Command
 
         try {
             $listings = CarListing::query()
+                ->select(['id', 'fingerprint', 'source_urls'])
                 ->orderByRaw('checked_at ASC NULLS FIRST')
                 ->limit($limit)
                 ->get();
 
+            $this->info('Listings loaded');
             $probes = $this->buildProbes($listings);
+            $this->info('Probes loaded');
             $classifications = $this->classifyAll($probes, $concurrency, $pauseMs);
-
+            $this->info('Classifications loaded');
             foreach ($listings as $listing) {
+                $this->info("Processing $listing->id");
                 $this->resolveListing($listing, $classifications[$listing->id] ?? []);
+                $this->info("Listing resolved $listing->id");
             }
         } catch (\Exception $e) {
             $this->error($e->getMessage());
