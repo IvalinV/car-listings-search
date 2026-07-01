@@ -28,13 +28,12 @@ class CleanUpRemovedListingsCommand extends Command
 
         $this->info("Listings clean up started (limit $limit).");
 
-        $listings = CarListing::query()
-            ->orderByRaw('checked_at IS NULL DESC')
-            ->orderBy('checked_at')
-            ->limit($limit)
-            ->get();
-
         try {
+            $listings = CarListing::query()
+                ->orderByRaw('checked_at ASC NULLS FIRST')
+                ->limit($limit)
+                ->get();
+
             $probes = $this->buildProbes($listings);
             $classifications = $this->classifyAll($probes, $concurrency, $pauseMs);
 
@@ -44,7 +43,6 @@ class CleanUpRemovedListingsCommand extends Command
         } catch (\Exception $e) {
             $this->error($e->getMessage());
         }
-
 
         $this->info('Listings clean up completed.');
     }
