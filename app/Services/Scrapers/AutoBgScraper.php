@@ -104,6 +104,46 @@ class AutoBgScraper extends Scraper
     }
 
     /**
+     * Fetch one page of the auto.bg JSON search API for a category-relative
+     * path (e.g. "avtomobili-dzhipove/audi") and return the seo_ids of active
+     * adverts on that page, the reported last page, and whether the request
+     * succeeded. A non-2xx response or connection error yields ok=false.
+     *
+     * @return array{ids: list<string>, lastpage: int, ok: bool}
+     */
+    public function fetchAdvertPage(string $path, int $page): array
+    {
+        $slug = "/$path/page/$page";
+
+        try {
+            $response = Http::withHeaders([
+                ...$this->browserHeaders(),
+                'Accept' => 'application/json, text/plain, */*',
+                'Referer' => 'https://www.auto.bg/obiavi/'.$path,
+            ])
+                ->connectTimeout((int) config('listings.autobg_sweep.connect_timeout'))
+                ->timeout((int) config('listings.autobg_sweep.request_timeout'))
+                ->get("https://www.auto.bg/api/srcresults/$page", ['slug' => $slug]);
+        } catch (ConnectionException) {
+            return ['ids' => [], 'lastpage' => 0, 'ok' => false];
+        }
+
+        if (! $response->successful()) {
+            return ['ids' => [], 'lastpage' => 0, 'ok' => false];
+        }
+
+        $ids = [];
+
+        foreach ((array) $response->json('data.adverts', []) as $advert) {
+            if ((int) ($advert['active'] ?? 0) === 1 && ! empty($advert['seo_id'])) {
+                $ids[] = (string) $advert['seo_id'];
+            }
+        }
+
+        return ['ids' => $ids, 'lastpage' => (int) $response->json('data.lastpage', 1), 'ok' => true];
+    }
+
+    /**
      * @return array<int, array{name: string, slug: string|null}>
      *
      * @throws ConnectionException

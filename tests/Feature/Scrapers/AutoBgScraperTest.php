@@ -2,6 +2,7 @@
 
 use App\Services\Scrapers\AutoBgScraper;
 use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
@@ -139,4 +140,39 @@ it('scrapes auto.bg models for a make, skipping pagination and duplicates', func
         ['name' => '320', 'slug' => '320'],
         ['name' => 'X5', 'slug' => 'x5'],
     ]);
+});
+
+it('fetches a page of active seo_ids with the reported last page', function (): void {
+    Http::fake([
+        'www.auto.bg/api/srcresults/*' => Http::response([
+            'data' => [
+                'lastpage' => 7,
+                'adverts' => [
+                    ['seo_id' => '111', 'active' => 1],
+                    ['seo_id' => '222', 'active' => 0],
+                    ['seo_id' => '333', 'active' => 1],
+                ],
+            ],
+        ]),
+    ]);
+
+    $result = (new AutoBgScraper)->fetchAdvertPage('avtomobili-dzhipove/audi', 1);
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['lastpage'])->toBe(7)
+        ->and($result['ids'])->toBe(['111', '333']); // inactive 222 skipped
+});
+
+it('reports ok=false when the advert page request fails', function (): void {
+    Http::fake(['www.auto.bg/api/srcresults/*' => Http::response('', 500)]);
+
+    $result = (new AutoBgScraper)->fetchAdvertPage('avtomobili-dzhipove/audi', 1);
+
+    expect($result)->toBe(['ids' => [], 'lastpage' => 0, 'ok' => false]);
+});
+
+it('reports ok=false when the advert page connection fails', function (): void {
+    Http::fake(['www.auto.bg/api/srcresults/*' => fn () => throw new ConnectionException('timed out')]);
+
+    expect((new AutoBgScraper)->fetchAdvertPage('avtomobili-dzhipove/audi', 1)['ok'])->toBeFalse();
 });

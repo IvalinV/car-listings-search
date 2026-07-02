@@ -19,4 +19,22 @@ return [
         // as a ConnectionException, classified 'unknown' and retried next run.
         'pool_timeout' => 20,
     ],
+
+    'autobg_sweep' => [
+        // The auto.bg API caps pagination at 100 pages (2000 adverts). This is
+        // both the hard page limit and the truncation signal: a slug whose
+        // lastpage reports 100 is truncated and must be split by model.
+        'page_cap' => 100,
+
+        // Pause between page requests (ms) to bound the sustained request rate.
+        'pause_ms' => 150,
+
+        // Listings loaded per reconciliation chunk.
+        'chunk_size' => 500,
+
+        // Per-request TCP connect and total timeouts (seconds). A timed-out
+        // page surfaces as ok=false and simply ends that segment's paging.
+        'connect_timeout' => 10,
+        'request_timeout' => 20,
+    ],
 ];
