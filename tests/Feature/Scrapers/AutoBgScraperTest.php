@@ -53,6 +53,58 @@ it('treats an auto.bg redirect that is not to a category page as not removed', f
     expect((new AutoBgScraper)->isListingRemoved('https://www.auto.bg/obiava/123/x'))->toBeFalse();
 });
 
+it('scrapes listings from the auto.bg JSON API', function (): void {
+    Http::fake([
+        'www.auto.bg/api/srcresults/*' => Http::response([
+            'status' => 'ok',
+            'data' => [
+                'lastpage' => 100,
+                'adverts' => [
+                    [
+                        'ida' => '21771859131150607',
+                        'seo_id' => '54125031',
+                        'url' => '/obiava/54125031/audi-q5-3-0tdi-239-k-s-quattro',
+                        'title' => 'Audi Q5 3.0TDI 239 к.с. quattro',
+                        'price' => '6 300 EUR',
+                        'price2' => '12 321,73 лв.',
+                        'year' => '2008',
+                        'month' => 'декември',
+                        'km' => ' 270 000',
+                        'engine_type' => 'Дизел',
+                        'locat' => 'Пловдив',
+                        'pict' => '//mobistatic2.focus.bg/mobile/photosorg/607/2/21771859131150607_kQ.webp',
+                        'pubtime' => '10:10 часа от днес',
+                        'active' => 1,
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $results = (new AutoBgScraper)->scrape(page: 1);
+
+    expect($results)->toHaveCount(1)
+        ->and($results[0]['title'])->toBe('Audi Q5 3.0TDI 239 к.с. quattro')
+        ->and($results[0]['link'])->toBe('https://www.auto.bg/obiava/54125031/audi-q5-3-0tdi-239-k-s-quattro')
+        ->and($results[0]['image'])->toBe('https://mobistatic2.focus.bg/mobile/photosorg/607/2/21771859131150607_kQ.webp')
+        ->and($results[0]['location'])->toBe('Пловдив')
+        ->and($results[0]['source'])->toBe('auto.bg')
+        ->and($results[0]['published_at']?->toDateTimeString())->toBe('2026-06-14 10:10:00');
+
+    // Price string is parseable by the shared extractPrice()/extractListingParams().
+    $scraper = new AutoBgScraper;
+    expect($scraper->extractPrice($results[0]['price'])['eur'])->toBe(6300.0)
+        ->and($results[0]['params']['production_year'])->toBe(2008)
+        ->and($results[0]['params']['mileage'])->toBe(270000)
+        ->and($results[0]['params']['fuel'])->toBe('Diesel');
+});
+
+it('returns an empty array when the auto.bg API request fails', function (): void {
+    Http::fake(['www.auto.bg/api/srcresults/*' => Http::response('', 500)]);
+
+    expect((new AutoBgScraper)->scrape(page: 1))->toBe([]);
+});
+
 it('scrapes auto.bg makes from the category page links', function (): void {
     $html = '<html><body>'
         .'<a href="/obiavi/avtomobili-dzhipove/audi">Audi</a>'
