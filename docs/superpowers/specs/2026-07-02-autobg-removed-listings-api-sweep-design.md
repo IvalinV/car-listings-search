@@ -72,9 +72,10 @@ For each auto.bg make in the `car_makes` catalog:
    (`.../{make}/{model}/page/{n}`) instead — models rarely exceed the cap, giving
    complete coverage. If `lastpage < 100`, the make feed is complete; skip models.
 
-Track which segments enumerated fully. **Only `seo_id`s from fully-succeeded
-segments enter the live set.** A segment that errors mid-paging contributes
-nothing (its listings simply fall to the probe — safe).
+Paging a segment stops at its first failed page; ids already collected are kept.
+This is safe **because reconciliation only ever bumps `checked_at`, never
+deletes** — a missed page merely leaves its listings for the hourly probe. There
+is no false-removal risk from partial enumeration.
 
 **Phase 2 — Reconcile.**
 
@@ -123,9 +124,9 @@ pacing knobs (no new concepts):
 
 ## Error handling
 
-- **Failed request within a segment:** the segment is marked incomplete; its
-  `seo_id`s are excluded from the live set → those listings are not bumped → they
-  fall to the hourly probe. No false removals.
+- **Failed request within a segment:** paging that segment stops; ids collected
+  before the failure are kept. The unreached listings simply aren't bumped → they
+  fall to the hourly probe. Safe because reconciliation never deletes on absence.
 - **Model exceeds the 2000 cap:** its tail is absent from the live set → probed by
   the hourly command → found alive → `checked_at` bumped by the probe. Costs a few
   extra probes; self-correcting.
