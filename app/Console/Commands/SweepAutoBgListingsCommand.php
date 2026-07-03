@@ -138,15 +138,21 @@ class SweepAutoBgListingsCommand extends Command
 
         $bumped = 0;
 
+        // Walk the whole table by primary key (a clean index scan) rather than
+        // filtering source_urls in SQL: `source_urls` is a Postgres `json`
+        // column, so a `LIKE` on it both errors on Postgres and, when cast,
+        // forces a full seq-scan-and-sort per chunk. Matching the auto.bg host
+        // and seo_id in PHP keeps each chunk an indexed range read.
         CarListing::query()
-            ->where('source_urls', 'like', '%auto.bg%')
             ->select(['id', 'source_urls'])
             ->chunkById((int) config('listings.autobg_sweep.chunk_size'), function (Collection $listings) use ($live, &$bumped): void {
                 $ids = [];
 
                 foreach ($listings as $listing) {
                     foreach ($listing->source_urls as $url) {
-                        if (preg_match('#/obiava/(\d+)#', (string) $url, $matches) && isset($live[$matches[1]])) {
+                        $url = (string) $url;
+
+                        if (str_contains($url, 'auto.bg') && preg_match('#/obiava/(\d+)#', $url, $matches) && isset($live[$matches[1]])) {
                             $ids[] = $listing->id;
 
                             break;
