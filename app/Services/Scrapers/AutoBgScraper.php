@@ -17,88 +17,130 @@ use Symfony\Component\DomCrawler\Crawler;
 class AutoBgScraper extends Scraper
 {
     /**
-     * @return array<int, array{title: string, price: string, link: string|null, description: string, image: string|null}>
+     * Scrape a page of listings from auto.bg's JSON search API.
+     *
+     * The public site is an Angular SPA; this is the same endpoint it calls, so
+     * every field arrives structured instead of parsed out of rendered HTML. The
+     * description and price strings are reconstructed to the shape the shared
+     * extractListingParams()/extractPrice()/getPublishedDate() helpers expect, so
+     * downstream parsing and deduplication behave identically to the old scraper.
+     *
+     * @return array<int, array{title: string, price: string, link: string|null, description: string, location: string|null, image: string|null, published_at: Carbon|null, source: string, params: array<string, mixed>}>
      *
      * @throws ConnectionException
      */
     public function scrape(int $page = 1): array
     {
+        $slug = "/avtomobili-dzhipove/page/$page";
+
         $response = Http::withHeaders([
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language' => 'bg-BG,bg;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer' => 'https://www.auto.bg/',
-        ])->get("https://www.auto.bg/obiavi/avtomobili-dzhipove/page/$page?nup=013&searchres=g14z70i1&sort=1");
+            ...$this->browserHeaders(),
+            'Accept' => 'application/json, text/plain, */*',
+            'Referer' => 'https://www.auto.bg/obiavi/avtomobili-dzhipove/page/'.$page,
+        ])->get("https://www.auto.bg/api/srcresults/$page", ['slug' => $slug]);
 
         if (! $response->successful()) {
             return [];
         }
 
-        $html = $response->body();
-        $crawler = new Crawler($html);
         $results = [];
 
-        $crawler->filter('my-advert-l')->each(function (Crawler $node) use (&$results, $page) {
+        foreach ((array) $response->json('data.adverts', []) as $advert) {
             try {
-                $image = null;
-                $imgNode = $node->filter('.photo img');
-                if ($imgNode->count() > 0) {
-                    $image = $imgNode->attr('src');
-                    if ($image && ! str_starts_with($image, 'http')) {
-                        $image = 'https:'.$image;
-                    }
-                }
-
-                $link = null;
-                $linkNode = $node->filter('a[href]');
-                if ($linkNode->count() > 0) {
-                    $link = $linkNode->attr('href');
-                    if ($link && str_starts_with($link, '/')) {
-                        $link = 'https://www.auto.bg'.$link;
-                    }
-                }
-
-                $titleNode = $node->filter('.title');
-                $title = $titleNode->count() > 0 ? trim($titleNode->text('')) : 'N/A';
-
-                $priceText = '';
-                $priceNode = $node->filter('.price');
-                if ($priceNode->count() > 0) {
-                    $priceText = trim(preg_replace('/\s+/', ' ', $priceNode->text('')));
-                    // Remove the VAT note if present
-                    $priceText = preg_replace('/Цената е с включено ДДС|Не се начислява ДДС/u', '', $priceText);
-                    $priceText = trim($priceText);
-                }
-
-                $locationNode = $node->filter('.location');
-                $location = $locationNode->count() > 0 ? trim(preg_replace('/\s+/', ' ', $locationNode->text(''))) : null;
-
-                $dateNode = $node->filter('.date');
-                $date = $dateNode->count() > 0 ? trim(preg_replace('/\s+/', ' ', $dateNode->text(''))) : null;
-
-                $pills = $node->filter('.pills .pill')->each(
-                    fn (Crawler $pill): string => trim(preg_replace('/\s+/', ' ', $pill->text('')))
-                );
-
-                $description = implode(' · ', array_filter([...$pills, $location]));
-
-                $results[] = [
-                    'title' => $title,
-                    'price' => $priceText ?: 'Contact for price',
-                    'link' => $link,
-                    'description' => $description,
-                    'location' => $location,
-                    'image' => $image,
-                    'published_at' => $this->getPublishedDate($date),
-                    'source' => 'auto.bg',
-                    'params' => $this->extractListingParams($description),
-                ];
+                $results[] = $this->mapAdvert($advert);
             } catch (\Exception $e) {
-                Log::channel(LogChannels::SCRAPING_AUTO)->error("Failed to scrape auto.bg ads for page $page - {$e->getMessage()}");
+                Log::channel(LogChannels::SCRAPING_AUTO)->error("Failed to map auto.bg advert on page $page - {$e->getMessage()}");
             }
-        });
+        }
 
         return $results;
+    }
+
+    /**
+     * Map a single JSON advert to the shared scraped-listing shape.
+     *
+     * @param  array<string, mixed>  $advert
+     * @return array{title: string, price: string, link: string|null, description: string, location: string|null, image: string|null, published_at: Carbon|null, source: string, params: array<string, mixed>}
+     */
+    private function mapAdvert(array $advert): array
+    {
+        $url = (string) Arr::get($advert, 'url', '');
+        $link = $url !== '' ? 'https://www.auto.bg'.$url : null;
+
+        $image = (string) Arr::get($advert, 'pict', '');
+        if ($image !== '' && ! str_starts_with($image, 'http')) {
+            $image = 'https:'.$image;
+        }
+
+        $location = trim((string) Arr::get($advert, 'locat', '')) ?: null;
+        $year = trim((string) Arr::get($advert, 'year', ''));
+        $month = trim((string) Arr::get($advert, 'month', ''));
+        $km = trim((string) Arr::get($advert, 'km', ''));
+        $fuel = trim((string) Arr::get($advert, 'engine_type', ''));
+
+        $pills = array_filter([
+            $year !== '' ? trim("$month $year").' г.' : '',
+            $km !== '' ? "$km км." : '',
+            $fuel,
+        ]);
+
+        $description = implode(' · ', array_filter([...$pills, $location]));
+
+        $priceText = trim((string) Arr::get($advert, 'price', ''));
+        $price2 = trim((string) Arr::get($advert, 'price2', ''));
+        $price = trim($priceText.' '.$price2);
+
+        return [
+            'title' => trim((string) Arr::get($advert, 'title', '')) ?: 'N/A',
+            'price' => $price !== '' ? $price : 'Contact for price',
+            'link' => $link,
+            'description' => $description,
+            'location' => $location,
+            'image' => $image ?: null,
+            'published_at' => $this->getPublishedDate(Arr::get($advert, 'pubtime')),
+            'source' => 'auto.bg',
+            'params' => $this->extractListingParams($description),
+        ];
+    }
+
+    /**
+     * Fetch one page of the auto.bg JSON search API for a category-relative
+     * path (e.g. "avtomobili-dzhipove/audi") and return the seo_ids of active
+     * adverts on that page, the reported last page, and whether the request
+     * succeeded. A non-2xx response or connection error yields ok=false.
+     *
+     * @return array{ids: list<string>, lastpage: int, ok: bool}
+     */
+    public function fetchAdvertPage(string $path, int $page): array
+    {
+        $slug = "/$path/page/$page";
+
+        try {
+            $response = Http::withHeaders([
+                ...$this->browserHeaders(),
+                'Accept' => 'application/json, text/plain, */*',
+                'Referer' => 'https://www.auto.bg/obiavi/'.$path,
+            ])
+                ->connectTimeout((int) config('listings.autobg_sweep.connect_timeout'))
+                ->timeout((int) config('listings.autobg_sweep.request_timeout'))
+                ->get("https://www.auto.bg/api/srcresults/$page", ['slug' => $slug]);
+        } catch (ConnectionException) {
+            return ['ids' => [], 'lastpage' => 0, 'ok' => false];
+        }
+
+        if (! $response->successful()) {
+            return ['ids' => [], 'lastpage' => 0, 'ok' => false];
+        }
+
+        $ids = [];
+
+        foreach ((array) $response->json('data.adverts', []) as $advert) {
+            if ((int) ($advert['active'] ?? 0) === 1 && ! empty($advert['seo_id'])) {
+                $ids[] = (string) $advert['seo_id'];
+            }
+        }
+
+        return ['ids' => $ids, 'lastpage' => (int) $response->json('data.lastpage', 1), 'ok' => true];
     }
 
     /**

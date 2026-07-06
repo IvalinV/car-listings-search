@@ -40,14 +40,14 @@ it('parses listings from the current page layout', function (string $scraperClas
         ->and($first['params'])->toHaveKeys(['production_year', 'mileage', 'fuel'])
         ->and($first['params']['production_year'])->toBeInt()->toBeGreaterThan(1900);
 })->with([
-    'auto.bg' => [AutoBgScraper::class, 'auto_bg.html', 'auto.bg', 'auto.bg'],
+    'auto.bg' => [AutoBgScraper::class, 'auto_bg.json', 'auto.bg', 'auto.bg'],
     'cars.bg' => [CarsBgScraper::class, 'cars_bg.html', 'cars.bg', 'cars.bg'],
     'mobile.bg' => [MobileBgScraper::class, 'mobile_bg.html', 'mobile.bg', 'mobile.bg'],
     'car24.bg' => [Car24Scraper::class, 'car24.json', 'car24.bg', 'car24.bg'],
 ]);
 
 it('builds a clean auto.bg description from spec pills, location and date', function (): void {
-    fakeScraperFixture('auto_bg.html');
+    fakeScraperFixture('auto_bg.json');
 
     $first = (new AutoBgScraper)->scrape(1)[0];
 
