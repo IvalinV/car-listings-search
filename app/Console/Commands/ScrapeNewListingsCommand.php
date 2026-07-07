@@ -22,13 +22,14 @@ class ScrapeNewListingsCommand extends Command
 
     public function handle(): void
     {
-        $this->scrapeCarsBg();
-
-        $this->scrapeAutoBg();
-
-        $this->scrapeMobileBg();
-
-        $this->scrapeCar24();
+        //TODO: Temporary stop the scraping on staging
+        if (!app()->isProduction()){
+            $this->scrapeAutoBg();
+        } else {
+            $this->scrapeCarsBg();
+            $this->scrapeMobileBg();
+            $this->scrapeCar24();
+        }
     }
 
     public function scrapeAutoBg(): void
