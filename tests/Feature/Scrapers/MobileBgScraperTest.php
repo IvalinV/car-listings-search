@@ -125,3 +125,27 @@ it('returns an empty array when a segment page is not successful', function (): 
 
     expect((new MobileBgScraper)->scrapeSegment('bmw', 5))->toBe([]);
 });
+
+it('parses the browse-sitemap into a make to models slug map', function (): void {
+    $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset>'
+        .'<url><loc>https://www.mobile.bg/obiavi/avtomobili-dzhipove/ac</loc></url>'
+        .'<url><loc>https://www.mobile.bg/obiavi/avtomobili-dzhipove/ac/drugi</loc></url>'
+        .'<url><loc>https://www.mobile.bg/obiavi/avtomobili-dzhipove/bmw</loc></url>'
+        .'<url><loc>https://www.mobile.bg/obiavi/avtomobili-dzhipove/bmw/116</loc></url>'
+        .'<url><loc>https://www.mobile.bg/obiavi/avtomobili-dzhipove/bmw/x5</loc></url>'
+        .'</urlset>';
+    Http::fake(['www.mobile.bg/sitemap/*' => Http::response(gzencode($xml))]);
+
+    $map = (new MobileBgScraper)->fetchMakeModelSlugs();
+
+    expect($map)->toBe([
+        'ac' => ['drugi'],
+        'bmw' => ['116', 'x5'],
+    ]);
+});
+
+it('returns an empty map when the browse-sitemap request fails', function (): void {
+    Http::fake(['www.mobile.bg/sitemap/*' => Http::response('', 500)]);
+
+    expect((new MobileBgScraper)->fetchMakeModelSlugs())->toBe([]);
+});

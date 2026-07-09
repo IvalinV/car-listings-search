@@ -137,6 +137,53 @@ class MobileBgScraper extends Scraper
     }
 
     /**
+     * Download and parse mobile.bg's car browse-sitemap into a make => [model
+     * slugs] map, using mobile.bg's own slug conventions (which differ from the
+     * shared catalog). Depth-1 loc URLs are makes; depth-2 are models. The file
+     * is gzipped; a live server may also transfer-encode it, so decode falls
+     * back to the raw body.
+     *
+     * @return array<string, list<string>>
+     *
+     * @throws ConnectionException
+     */
+    public function fetchMakeModelSlugs(): array
+    {
+        $response = Http::withHeaders($this->browserHeaders())
+            ->get('https://www.mobile.bg/sitemap/sitemap-avtomobili-dzhipove-avtomobili-dzhipove.xml.gz');
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $xml = @gzdecode($response->body());
+
+        if ($xml === false) {
+            $xml = $response->body();
+        }
+
+        $map = [];
+
+        preg_match_all(
+            '#/obiavi/avtomobili-dzhipove/([a-z0-9-]+)(?:/([a-z0-9-]+))?</loc>#i',
+            $xml,
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        foreach ($matches as $match) {
+            $make = $match[1];
+            $map[$make] ??= [];
+
+            if (isset($match[2]) && $match[2] !== '') {
+                $map[$make][] = $match[2];
+            }
+        }
+
+        return $map;
+    }
+
+    /**
      * Derive the publication date from a listing link.
      *
      * mobile.bg listing IDs embed the creation Unix timestamp: dropping the
