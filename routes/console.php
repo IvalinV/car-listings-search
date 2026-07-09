@@ -8,6 +8,6 @@ use App\Console\Commands\UpdateCar24ListingsCommand;
 
 Schedule::command(ScrapeListingsDailyCommand::class)->daily();
 Schedule::command(ScrapeNewListingsCommand::class)->everyThirtyMinutes();
-Schedule::command(CleanUpRemovedListingsCommand::class)->hourly()->withoutOverlapping();
+Schedule::command(CleanUpRemovedListingsCommand::class)->weeklyOn(2, 5);
 Schedule::command(SweepAutoBgListingsCommand::class)->dailyAt('04:15')->withoutOverlapping();
 Schedule::command(UpdateCar24ListingsCommand::class)->hourly();
