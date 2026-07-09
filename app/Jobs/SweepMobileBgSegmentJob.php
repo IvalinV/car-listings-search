@@ -9,6 +9,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
@@ -34,6 +35,20 @@ class SweepMobileBgSegmentJob implements ShouldQueue
         public array $childSlugs = [],
     ) {}
 
+    /**
+     * Prevent the same segment from running concurrently. A duplicate reserved
+     * because the queue's retry_after is shorter than this job's timeout is
+     * dropped rather than released, so a segment never double-persists or
+     * double-dispatches its model descent. The lock expiry sits above the
+     * job timeout so a dead job's lock still clears.
+     *
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping($this->slug))->dontRelease()->expireAfter(700)];
+    }
+
     public function handle(MobileBgScraper $scraper, ListingPersister $persister): void
     {
         $pageCap = (int) config('listings.mobilebg_sweep.page_cap');
@@ -47,7 +62,11 @@ class SweepMobileBgSegmentJob implements ShouldQueue
                 break;
             }
 
-            $persister->persist($records, $scraper);
+            try {
+                $persister->persist($records, $scraper);
+            } catch (\Throwable $e) {
+                Log::channel(LogChannels::LISTINGS)->error("mobile.bg segment {$this->slug} failed to persist page $page: {$e->getMessage()}");
+            }
 
             if ($page === $pageCap) {
                 $reachedCap = true;

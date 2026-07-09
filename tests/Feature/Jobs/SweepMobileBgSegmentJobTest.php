@@ -5,6 +5,7 @@ use App\Models\CarListing;
 use App\Services\ListingPersister;
 use App\Services\Scrapers\MobileBgScraper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -67,4 +68,12 @@ it('descends into child model segments when a make reaches the page cap', functi
     Bus::assertDispatchedTimes(SweepMobileBgSegmentJob::class, 2);
     Bus::assertDispatched(SweepMobileBgSegmentJob::class, fn ($job) => $job->slug === 'bmw/116');
     Bus::assertDispatched(SweepMobileBgSegmentJob::class, fn ($job) => $job->slug === 'bmw/x5');
+});
+
+it('guards against overlapping runs of the same segment', function (): void {
+    $middleware = (new SweepMobileBgSegmentJob('bmw/320'))->middleware();
+
+    expect($middleware)->toHaveCount(1)
+        ->and($middleware[0])->toBeInstanceOf(WithoutOverlapping::class)
+        ->and($middleware[0]->key)->toBe('bmw/320');
 });
