@@ -24,11 +24,8 @@ class MobileBgScraper extends Scraper
      */
     public function scrape(int $page = 1): array
     {
-        // 1. Fetch HTML with specific headers to look like a browser
         $response = Http::withHeaders([
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language' => 'bg-BG,bg;q=0.9,en-US;q=0.8,en;q=0.7',
+            ...$this->browserHeaders(),
             'Referer' => 'https://www.mobile.bg/',
         ])->get("https://www.mobile.bg/pcgi/mobile.cgi?act=3&sink=1&f1=$page");
 
@@ -36,13 +33,51 @@ class MobileBgScraper extends Scraper
             return [];
         }
 
-        $html = $response->body();
+        return $this->parseCards(new Crawler($response->body()), "page $page");
+    }
 
-        $crawler = new Crawler($html);
+    /**
+     * Scrape one page of a make (or make/model) segment via the slug URL.
+     * Page 1 has no suffix; later pages use the `/p-N` form. Reuses the shared
+     * `.ads2023 .item` card parser. Pages are served as windows-1251.
+     *
+     * @return array<int, array{title: string, price: string, link: string|null, description: string, image: string|null, location: string, source: string, published_at: Carbon|null, params: array<string, mixed>}>
+     *
+     * @throws ConnectionException
+     */
+    public function scrapeSegment(string $slug, int $page = 1): array
+    {
+        $suffix = $page > 1 ? "/p-$page" : '';
+
+        $response = Http::withHeaders([
+            ...$this->browserHeaders(),
+            'Referer' => 'https://www.mobile.bg/',
+        ])
+            ->connectTimeout((int) config('listings.mobilebg_sweep.connect_timeout'))
+            ->timeout((int) config('listings.mobilebg_sweep.request_timeout'))
+            ->get("https://www.mobile.bg/obiavi/avtomobili-dzhipove/{$slug}{$suffix}");
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $crawler = new Crawler;
+        $crawler->addHtmlContent($response->body(), 'windows-1251');
+
+        return $this->parseCards($crawler, "segment $slug p$page");
+    }
+
+    /**
+     * Parse `.ads2023 .item` result cards into the shared scraped-listing shape.
+     * `$context` labels failures in the log (page number or segment slug).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function parseCards(Crawler $crawler, string $context): array
+    {
         $results = [];
 
-        // 3. Parse the listings
-        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results, $page) {
+        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results, $context): void {
             try {
                 $link = $node->filter('.zaglavie>a')->count() > 0
                     ? ltrim(trim($node->filter('.zaglavie>a')->attr('href')), '/')
@@ -54,14 +89,13 @@ class MobileBgScraper extends Scraper
                     'link' => $link,
                     'description' => \Str::excerpt(trim($node->filter('.info')->text('')), options: ['radius' => 500]),
                     'image' => $node->filter('.photo .big a.image .pic')->count() > 0 ? ltrim($node->filter('.photo .big a.image .pic')->attr('src'), '/') : null,
-                    'location' => trim($node->filter('.location')->text()),
+                    'location' => trim($node->filter('.location')->text('')),
                     'source' => 'mobile.bg',
                     'published_at' => $this->getPublishedDate($link),
                     'params' => $this->extractListingParams($node->filter('.params')->first()->text()),
                 ];
             } catch (\Exception $e) {
-                // Skip if parsing a specific node fails
-                Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for page $page - {$e->getMessage()}");
+                Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for $context - {$e->getMessage()}");
             }
         });
 

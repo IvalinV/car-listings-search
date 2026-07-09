@@ -81,3 +81,47 @@ it('scrapes mobile.bg makes from the autocomplete menu', function (): void {
         ['name' => 'BMW', 'slug' => null],
     ]);
 });
+
+it('scrapes a make/model segment via the slug URL and parses windows-1251 cards', function (): void {
+    $html = '<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251"></head><body>'
+        .'<div class="ads2023"><div class="item">'
+        .'<div class="zaglavie"><a href="/obiava-11779353449257335-bmw-320">x</a></div>'
+        .'<div class="title">БМВ 320</div>'
+        .'<div class="price">1 000 EUR</div>'
+        .'<div class="info">Дизел, автоматик</div>'
+        .'<div class="location">гр. София</div>'
+        .'<div class="params">2012 г. 200 000 км Дизел</div>'
+        .'</div></div></body></html>';
+    $cp1251 = mb_convert_encoding($html, 'Windows-1251', 'UTF-8');
+    Http::fake(['www.mobile.bg/*' => Http::response($cp1251)]);
+
+    $results = (new MobileBgScraper)->scrapeSegment('bmw/320', 1);
+
+    expect($results)->toHaveCount(1)
+        ->and($results[0]['title'])->toBe('БМВ 320')
+        ->and($results[0]['location'])->toBe('гр. София')
+        ->and($results[0]['source'])->toBe('mobile.bg')
+        ->and($results[0]['link'])->toContain('obiava-11779353449257335');
+});
+
+it('builds the /p-N URL for pages beyond the first', function (): void {
+    Http::fake(['www.mobile.bg/*' => Http::response('<html></html>')]);
+
+    (new MobileBgScraper)->scrapeSegment('bmw', 3);
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://www.mobile.bg/obiavi/avtomobili-dzhipove/bmw/p-3');
+});
+
+it('omits the /p-1 suffix on the first page of a segment', function (): void {
+    Http::fake(['www.mobile.bg/*' => Http::response('<html></html>')]);
+
+    (new MobileBgScraper)->scrapeSegment('bmw', 1);
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://www.mobile.bg/obiavi/avtomobili-dzhipove/bmw');
+});
+
+it('returns an empty array when a segment page is not successful', function (): void {
+    Http::fake(['www.mobile.bg/*' => Http::response('', 404)]);
+
+    expect((new MobileBgScraper)->scrapeSegment('bmw', 5))->toBe([]);
+});

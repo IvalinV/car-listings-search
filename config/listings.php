@@ -37,4 +37,18 @@ return [
         'connect_timeout' => 10,
         'request_timeout' => 20,
     ],
+
+    'mobilebg_sweep' => [
+        // mobile.bg caps any result set at ~151 pages. Treated as the truncation
+        // signal: a segment returning cards up to this page is assumed to have
+        // more and is split by model.
+        'page_cap' => 150,
+
+        // Pause between page requests (ms) to bound the sustained request rate.
+        'pause_ms' => 300,
+
+        // Per-request TCP connect and total timeouts (seconds).
+        'connect_timeout' => 10,
+        'request_timeout' => 20,
+    ],
 ];
