@@ -2,6 +2,7 @@
 
 use App\Services\Scrapers\MobileBgScraper;
 use Carbon\Carbon;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -120,8 +121,15 @@ it('omits the /p-1 suffix on the first page of a segment', function (): void {
     Http::assertSent(fn ($request) => $request->url() === 'https://www.mobile.bg/obiavi/avtomobili-dzhipove/bmw');
 });
 
-it('returns an empty array when a segment page is not successful', function (): void {
-    Http::fake(['www.mobile.bg/*' => Http::response('', 404)]);
+it('throws when a segment page is not successful so the walker can retry', function (): void {
+    Http::fake(['www.mobile.bg/*' => Http::response('', 500)]);
+
+    expect(fn () => (new MobileBgScraper)->scrapeSegment('bmw', 5))
+        ->toThrow(RequestException::class);
+});
+
+it('returns an empty array when a segment page has no cards', function (): void {
+    Http::fake(['www.mobile.bg/*' => Http::response('<html><body><div class="ads2023"></div></body></html>')]);
 
     expect((new MobileBgScraper)->scrapeSegment('bmw', 5))->toBe([]);
 });

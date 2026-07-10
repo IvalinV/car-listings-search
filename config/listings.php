@@ -40,12 +40,9 @@ return [
 
     'mobilebg_sweep' => [
         // mobile.bg caps any result set at ~151 pages. Treated as the truncation
-        // signal: a segment returning cards up to this page is assumed to have
-        // more and is split by model.
+        // signal: a segment reaching this page is assumed to have more and is
+        // split by model (SweepMobileBgPageJob descends into its child slugs).
         'page_cap' => 150,
-
-        // Pause between page requests (ms) to bound the sustained request rate.
-        'pause_ms' => 300,
 
         // Per-request TCP connect and total timeouts (seconds).
         'connect_timeout' => 10,

@@ -1,6 +1,6 @@
 <?php
 
-use App\Jobs\SweepMobileBgSegmentJob;
+use App\Jobs\SweepMobileBgPageJob;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
@@ -15,15 +15,15 @@ function fakeMobileBrowseSitemap(): void
     Http::fake(['www.mobile.bg/sitemap/*' => Http::response(gzencode($xml))]);
 }
 
-it('dispatches one segment job per make with its model slugs', function (): void {
+it('seeds one page-1 walker per make with its model slugs', function (): void {
     Bus::fake();
     fakeMobileBrowseSitemap();
 
     $this->artisan('scrape:mobilebg-catalog')->assertSuccessful();
 
-    Bus::assertDispatchedTimes(SweepMobileBgSegmentJob::class, 2);
-    Bus::assertDispatched(SweepMobileBgSegmentJob::class, fn ($job) => $job->slug === 'ac' && $job->childSlugs === ['drugi']);
-    Bus::assertDispatched(SweepMobileBgSegmentJob::class, fn ($job) => $job->slug === 'bmw' && $job->childSlugs === ['116']);
+    Bus::assertDispatchedTimes(SweepMobileBgPageJob::class, 2);
+    Bus::assertDispatched(SweepMobileBgPageJob::class, fn ($job) => $job->slug === 'ac' && $job->page === 1 && $job->childSlugs === ['drugi']);
+    Bus::assertDispatched(SweepMobileBgPageJob::class, fn ($job) => $job->slug === 'bmw' && $job->page === 1 && $job->childSlugs === ['116']);
 });
 
 it('limits the sweep to a single make with --make', function (): void {
@@ -32,8 +32,8 @@ it('limits the sweep to a single make with --make', function (): void {
 
     $this->artisan('scrape:mobilebg-catalog', ['--make' => 'bmw'])->assertSuccessful();
 
-    Bus::assertDispatchedTimes(SweepMobileBgSegmentJob::class, 1);
-    Bus::assertDispatched(SweepMobileBgSegmentJob::class, fn ($job) => $job->slug === 'bmw');
+    Bus::assertDispatchedTimes(SweepMobileBgPageJob::class, 1);
+    Bus::assertDispatched(SweepMobileBgPageJob::class, fn ($job) => $job->slug === 'bmw' && $job->page === 1);
 });
 
 it('fails and dispatches nothing when the browse-sitemap is unavailable', function (): void {

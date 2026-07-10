@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SweepMobileBgSegmentJob;
+use App\Jobs\SweepMobileBgPageJob;
 use App\Misc\LogChannels;
 use App\Services\Scrapers\MobileBgScraper;
 use Illuminate\Console\Command;
@@ -35,7 +35,7 @@ class ScrapeMobileBgCatalogCommand extends Command
                 continue;
             }
 
-            SweepMobileBgSegmentJob::dispatch($make, array_values($models))->onQueue('scrape-listings');
+            SweepMobileBgPageJob::dispatch($make, 1, array_values($models))->onQueue('scrape-listings');
             $dispatched++;
         }
 

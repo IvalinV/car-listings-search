@@ -5,6 +5,7 @@ namespace App\Services\Scrapers;
 use App\Misc\LogChannels;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\DomCrawler\Crawler;
@@ -41,9 +42,15 @@ class MobileBgScraper extends Scraper
      * Page 1 has no suffix; later pages use the `/p-N` form. Reuses the shared
      * `.ads2023 .item` card parser. Pages are served as windows-1251.
      *
+     * A non-2xx response throws (rather than returning `[]`) so the page-walker
+     * job retries the same page instead of mistaking a server hiccup for the end
+     * of results. A 200 page that parses to no cards is the genuine end and
+     * returns `[]`.
+     *
      * @return array<int, array{title: string, price: string, link: string|null, description: string, image: string|null, location: string, source: string, published_at: Carbon|null, params: array<string, mixed>}>
      *
      * @throws ConnectionException
+     * @throws RequestException
      */
     public function scrapeSegment(string $slug, int $page = 1): array
     {
@@ -57,9 +64,7 @@ class MobileBgScraper extends Scraper
             ->timeout((int) config('listings.mobilebg_sweep.request_timeout'))
             ->get("https://www.mobile.bg/obiavi/avtomobili-dzhipove/{$slug}{$suffix}");
 
-        if (! $response->successful()) {
-            return [];
-        }
+        $response->throw();
 
         $crawler = new Crawler;
         $crawler->addHtmlContent($response->body(), 'windows-1251');

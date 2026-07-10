@@ -1,7 +1,7 @@
 # mobile.bg sweep: per-page chunking (fix job timeouts)
 
 **Date:** 2026-07-09
-**Status:** Design in progress — paused for later continuation. Architecture approved; two open questions remain (see bottom).
+**Status:** Approved — open questions resolved (see bottom); implemented 2026-07-10.
 
 ## Problem
 
@@ -148,17 +148,15 @@ across workers.
 - Child walker (`bmw/x5`) at cap with empty `childSlugs` does not re-descend.
 - windows-1251 title parses intact (kept from existing tests).
 
-## Open questions (resolve on resume, before writing the implementation plan)
+## Open questions — RESOLVED (2026-07-10)
 
-1. **Rename the job?** It is now per-page, not per-segment-sweep. Options:
-   keep `SweepMobileBgSegmentJob` (less churn) vs. rename to e.g.
-   `SweepMobileBgPageJob` (clearer intent). Leaning: rename for clarity.
-2. **Keep `WithoutOverlapping`?** The original guard
-   (`WithoutOverlapping($slug)->dontRelease()->expireAfter(700)`) existed to protect
-   an expensive long job. Jobs are now short (~1-3s) and `retry_after` (700) >>
-   runtime, so concurrent duplicates are unlikely. Options: drop it (simpler) vs.
-   keep a lightweight `WithoutOverlapping("mbg:$slug:$page")->dontRelease()` as cheap
-   insurance against double-chaining. Leaning: keep the lightweight per-page guard.
+1. **Rename the job?** RESOLVED: renamed `SweepMobileBgSegmentJob` →
+   `SweepMobileBgPageJob`. The job is now per-page, so the name matches its intent;
+   all references (command, tests, self-dispatch) updated.
+2. **Keep `WithoutOverlapping`?** RESOLVED: kept a lightweight per-page guard,
+   `WithoutOverlapping("mbg:$slug:$page")->dontRelease()`, as cheap insurance against
+   double-chaining. Dropped the `->expireAfter(700)` (jobs are now ~1-3s; the default
+   lock TTL is fine).
 
 ## Out of scope
 
