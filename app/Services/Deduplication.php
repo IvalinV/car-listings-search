@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Misc\LogChannels;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -50,7 +49,7 @@ class Deduplication
 
             return $hash->toHex();
         } catch (\Throwable $exception) {
-            Log::channel(LogChannels::DEDUPLICATION)->error("Error getting $imageUrl for deduplication: {$exception->getMessage()}");
+            Log::error("Error getting $imageUrl for deduplication: {$exception->getMessage()}");
 
             return self::paramsHash($params);
         }

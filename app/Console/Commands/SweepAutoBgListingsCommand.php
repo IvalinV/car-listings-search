@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Models\CarMake;
 use App\Models\CarModel;
@@ -19,14 +18,14 @@ class SweepAutoBgListingsCommand extends Command
 
     public function handle(AutoBgScraper $scraper): int
     {
-        Log::channel(LogChannels::LISTINGS)->info('auto.bg sweep started.');
+        Log::info('auto.bg sweep started.');
 
         $live = $this->enumerateLiveIds($scraper);
         $bumped = $this->reconcile($live);
 
         $message = count($live).' live auto.bg ids enumerated, '.$bumped.' listing(s) marked verified.';
         $this->info($message);
-        Log::channel(LogChannels::LISTINGS)->info("auto.bg sweep completed: $message");
+        Log::info("auto.bg sweep completed: $message");
 
         return self::SUCCESS;
     }

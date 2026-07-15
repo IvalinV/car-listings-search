@@ -2,7 +2,6 @@
 
 namespace App\Services\Scrapers;
 
-use App\Misc\LogChannels;
 use Carbon\Carbon;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
@@ -30,7 +29,7 @@ class Car24Scraper extends Scraper
         try {
             $response->throwUnlessStatus(200);
         } catch (RequestException $e) {
-            Log::channel(LogChannels::SCRAPING_CAR24)->error("Failed to scrape car24.bg ads for page $page - {$e->getMessage()}");
+            Log::error("Failed to scrape car24.bg ads for page $page - {$e->getMessage()}");
         }
 
         $results = $response->json('data.adverts');
