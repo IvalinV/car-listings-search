@@ -105,6 +105,47 @@ it('scrapes a make/model segment via the slug URL and parses windows-1251 cards'
         ->and($results[0]['link'])->toContain('obiava-11779353449257335');
 });
 
+it('still parses a card that has no .params block instead of dropping it', function (): void {
+    $html = '<html><body>'
+        .'<div class="ads2023"><div class="item">'
+        .'<div class="zaglavie"><a href="/obiava-11779353449257335-bmw-320">x</a></div>'
+        .'<div class="title">БМВ 320</div>'
+        .'<div class="price">1 000 EUR</div>'
+        .'<div class="info">Дизел</div>'
+        .'<div class="location">гр. София</div>'
+        .'</div></div></body></html>';
+    $cp1251 = mb_convert_encoding($html, 'Windows-1251', 'UTF-8');
+    Http::fake(['www.mobile.bg/*' => Http::response($cp1251)]);
+
+    $results = (new MobileBgScraper)->scrapeSegment('bmw/320', 1);
+
+    expect($results)->toHaveCount(1)
+        ->and($results[0]['title'])->toBe('БМВ 320')
+        ->and($results[0]['params'])->toBeArray();
+});
+
+it('skips .item.fakti news widgets injected into the results grid', function (): void {
+    $html = '<html><body><div class="ads2023">'
+        .'<div class="item">'
+        .'<div class="zaglavie"><a href="/obiava-11779353449257335-bmw-320">x</a></div>'
+        .'<div class="title">БМВ 320</div><div class="price">1 000 EUR</div>'
+        .'<div class="info">Дизел</div><div class="location">гр. София</div>'
+        .'<div class="params">2012 г. 200 000 км</div>'
+        .'</div>'
+        .'<div class="item fakti">'
+        .'<div class="zaglavie"><a href="https://fakti.bg/world/1060583-some-news">news</a></div>'
+        .'<div class="title">Новина</div>'
+        .'</div>'
+        .'</div></body></html>';
+    $cp1251 = mb_convert_encoding($html, 'Windows-1251', 'UTF-8');
+    Http::fake(['www.mobile.bg/*' => Http::response($cp1251)]);
+
+    $results = (new MobileBgScraper)->scrapeSegment('bmw/320', 1);
+
+    expect($results)->toHaveCount(1)
+        ->and($results[0]['title'])->toBe('БМВ 320');
+});
+
 it('builds the /p-N URL for pages beyond the first', function (): void {
     Http::fake(['www.mobile.bg/*' => Http::response('<html></html>')]);
 

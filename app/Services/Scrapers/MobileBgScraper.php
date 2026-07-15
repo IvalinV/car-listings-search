@@ -75,13 +75,17 @@ class MobileBgScraper extends Scraper
      * Parse `.ads2023 .item` result cards into the shared scraped-listing shape.
      * `$context` labels failures in the log (page number or segment slug).
      *
+     * `.item.fakti` cards are skipped: mobile.bg injects fakti.bg news widgets
+     * into the results grid, and they carry no listing markup (no `.params`),
+     * so they are not cars and must not be persisted.
+     *
      * @return array<int, array<string, mixed>>
      */
     private function parseCards(Crawler $crawler, string $context): array
     {
         $results = [];
 
-        $crawler->filter('.ads2023 .item')->each(function (Crawler $node) use (&$results, $context): void {
+        $crawler->filter('.ads2023 .item:not(.fakti)')->each(function (Crawler $node) use (&$results, $context): void {
             try {
                 $link = $node->filter('.zaglavie>a')->count() > 0
                     ? ltrim(trim($node->filter('.zaglavie>a')->attr('href')), '/')
@@ -96,7 +100,7 @@ class MobileBgScraper extends Scraper
                     'location' => trim($node->filter('.location')->text('')),
                     'source' => 'mobile.bg',
                     'published_at' => $this->getPublishedDate($link),
-                    'params' => $this->extractListingParams($node->filter('.params')->first()->text()),
+                    'params' => $this->extractListingParams($node->filter('.params')->first()->text('')),
                 ];
             } catch (\Exception $e) {
                 Log::error("Failed to scrape mobile.bg ads for $context - {$e->getMessage()}");
