@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Jobs\SweepMobileBgPageJob;
-use App\Misc\LogChannels;
 use App\Services\Scrapers\MobileBgScraper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -16,13 +15,13 @@ class ScrapeMobileBgCatalogCommand extends Command
 
     public function handle(MobileBgScraper $scraper): int
     {
-        Log::channel(LogChannels::LISTINGS)->info('mobile.bg catalog sweep started.');
+        Log::info('mobile.bg catalog sweep started.');
 
         $slugs = $scraper->fetchMakeModelSlugs();
 
         if ($slugs === []) {
             $this->error('Could not read the mobile.bg browse-sitemap; aborting.');
-            Log::channel(LogChannels::LISTINGS)->error('mobile.bg catalog sweep aborted: empty slug map.');
+            Log::error('mobile.bg catalog sweep aborted: empty slug map.');
 
             return self::FAILURE;
         }
@@ -41,7 +40,7 @@ class ScrapeMobileBgCatalogCommand extends Command
 
         $message = "$dispatched mobile.bg make segment job(s) dispatched.";
         $this->info($message);
-        Log::channel(LogChannels::LISTINGS)->info("mobile.bg catalog sweep dispatched: $message");
+        Log::info("mobile.bg catalog sweep dispatched: $message");
 
         return self::SUCCESS;
     }

@@ -2,7 +2,6 @@
 
 namespace App\Services\Scrapers;
 
-use App\Misc\LogChannels;
 use Carbon\Carbon;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
@@ -110,7 +109,7 @@ class CarsBgScraper extends Scraper
                 ];
             } catch (\Exception $e) {
                 // Skip if parsing a specific node fails
-                Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
+                Log::error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
             }
         });
 
@@ -211,7 +210,7 @@ class CarsBgScraper extends Scraper
             try {
                 $results[] = $this->scrape(page: $page, time: $time);
             } catch (ConnectionException  $e) {
-                Log::channel(LogChannels::SCRAPING_CARS)->error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
+                Log::error("Failed to scrape cars.bg ads for $page - {$e->getMessage()}");
             }
         }
 

@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Misc\LogChannels;
 use App\Services\ListingPersister;
 use App\Services\Scrapers\MobileBgScraper;
 use Illuminate\Bus\Queueable;
@@ -78,7 +77,7 @@ class SweepMobileBgPageJob implements ShouldQueue
         }
 
         if ($this->childSlugs === []) {
-            Log::channel(LogChannels::LISTINGS)->warning("mobile.bg segment {$this->slug} reached the page cap with no models to descend into; coverage may be truncated.");
+            Log::warning("mobile.bg segment {$this->slug} reached the page cap with no models to descend into; coverage may be truncated.");
 
             return;
         }
@@ -90,6 +89,6 @@ class SweepMobileBgPageJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        Log::channel(LogChannels::LISTINGS)->error("mobile.bg page sweep failed for {$this->slug} p{$this->page}: {$exception?->getMessage()}");
+        Log::error("mobile.bg page sweep failed for {$this->slug} p{$this->page}: {$exception?->getMessage()}");
     }
 }

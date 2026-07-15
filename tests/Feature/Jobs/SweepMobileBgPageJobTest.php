@@ -1,7 +1,6 @@
 <?php
 
 use App\Jobs\SweepMobileBgPageJob;
-use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Services\ListingPersister;
 use App\Services\Scrapers\MobileBgScraper;
@@ -98,7 +97,6 @@ it('descends into one child model walker per model when it reaches the page cap'
 it('logs a truncation warning and dispatches nothing at the cap with no child slugs', function (): void {
     config()->set('listings.mobilebg_sweep.page_cap', 3);
     Bus::fake();
-    Log::shouldReceive('channel')->with(LogChannels::LISTINGS)->andReturnSelf();
     Log::shouldReceive('warning')->once()->withArgs(
         fn (string $message) => str_contains($message, 'bmw/x5') && str_contains($message, 'page cap'),
     );

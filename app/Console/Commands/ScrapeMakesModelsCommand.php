@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Misc\LogChannels;
 use App\Models\CarMake;
 use App\Models\CarModel;
 use App\Services\Scrapers\AutoBgScraper;
@@ -41,7 +40,7 @@ class ScrapeMakesModelsCommand extends Command
                     $pooled[] = $make['name'];
                 }
             } catch (\Throwable $e) {
-                Log::channel(LogChannels::LISTINGS)->error("Failed to scrape makes from {$source} - {$e->getMessage()}");
+                Log::error("Failed to scrape makes from {$source} - {$e->getMessage()}");
             }
         }
 
@@ -65,7 +64,7 @@ class ScrapeMakesModelsCommand extends Command
         try {
             $makes = $auto->scrapeMakes();
         } catch (\Throwable $e) {
-            Log::channel(LogChannels::LISTINGS)->error("Failed to scrape auto.bg makes for models - {$e->getMessage()}");
+            Log::error("Failed to scrape auto.bg makes for models - {$e->getMessage()}");
 
             return;
         }
@@ -84,7 +83,7 @@ class ScrapeMakesModelsCommand extends Command
             try {
                 $models = $auto->scrapeModels($make['slug']);
             } catch (\Throwable $e) {
-                Log::channel(LogChannels::LISTINGS)->error("Failed to scrape auto.bg models for {$make['slug']} - {$e->getMessage()}");
+                Log::error("Failed to scrape auto.bg models for {$make['slug']} - {$e->getMessage()}");
 
                 continue;
             }

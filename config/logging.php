@@ -126,62 +126,6 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
-
-        \App\Misc\LogChannels::SCRAPING_CARS => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/scraping-cars.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
-
-        \App\Misc\LogChannels::SCRAPING_MOBILE => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/scraping-mobile.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
-
-        \App\Misc\LogChannels::SCRAPING_CAR24 => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/scraping-car24.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
-
-        \App\Misc\LogChannels::SCRAPING_AUTO => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/scraping-auto-bg.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
-
-        \App\Misc\LogChannels::SCRAPING_JOB => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/scraping-job.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
-
-        \App\Misc\LogChannels::DEDUPLICATION => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/deduplication.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
-
-        \App\Misc\LogChannels::LISTINGS => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/listings.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
-        ],
     ],
 
 ];

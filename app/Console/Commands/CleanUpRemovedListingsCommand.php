@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Misc\LogChannels;
 use App\Models\CarListing;
 use App\Services\Scrapers\AutoBgScraper;
 use App\Services\Scrapers\Car24Scraper;
@@ -30,7 +29,7 @@ class CleanUpRemovedListingsCommand extends Command
         $connectTimeout = max(1, (int) config('listings.cleanup.pool_connect_timeout'));
         $timeout = max(1, (int) config('listings.cleanup.pool_timeout'));
 
-        Log::channel(LogChannels::LISTINGS)->info("Listings clean up started (limit $limit).");
+        Log::info("Listings clean up started (limit $limit).");
 
         try {
             $listings = CarListing::query()
@@ -46,10 +45,10 @@ class CleanUpRemovedListingsCommand extends Command
                 $this->resolveListing($listing, $classifications[$listing->id] ?? []);
             }
         } catch (\Exception $e) {
-            Log::channel(LogChannels::LISTINGS)->error($e->getMessage());
+            Log::error($e->getMessage());
         }
 
-        Log::channel(LogChannels::LISTINGS)->info('Listings clean up completed.');
+        Log::info('Listings clean up completed.');
     }
 
     /**
@@ -186,7 +185,7 @@ class CleanUpRemovedListingsCommand extends Command
     private function resolveListing(CarListing $listing, array $classByUrl): void
     {
         if (in_array('unknown', $classByUrl, true)) {
-            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint skipped (transient).");
+            Log::info("Listing $listing->fingerprint skipped (transient).");
 
             return;
         }
@@ -201,7 +200,7 @@ class CleanUpRemovedListingsCommand extends Command
 
         if ($liveUrls === []) {
             $listing->delete();
-            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint removed.");
+            Log::info("Listing $listing->fingerprint removed.");
 
             return;
         }
@@ -210,7 +209,7 @@ class CleanUpRemovedListingsCommand extends Command
 
         if (count($liveUrls) !== count($listing->source_urls)) {
             $update['source_urls'] = $liveUrls;
-            Log::channel(LogChannels::LISTINGS)->info("Listing $listing->fingerprint pruned to ".count($liveUrls).' live source(s).');
+            Log::info("Listing $listing->fingerprint pruned to ".count($liveUrls).' live source(s).');
         }
 
         $listing->update($update);

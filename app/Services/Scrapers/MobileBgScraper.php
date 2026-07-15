@@ -2,7 +2,6 @@
 
 namespace App\Services\Scrapers;
 
-use App\Misc\LogChannels;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -100,7 +99,7 @@ class MobileBgScraper extends Scraper
                     'params' => $this->extractListingParams($node->filter('.params')->first()->text()),
                 ];
             } catch (\Exception $e) {
-                Log::channel(LogChannels::SCRAPING_MOBILE)->error("Failed to scrape mobile.bg ads for $context - {$e->getMessage()}");
+                Log::error("Failed to scrape mobile.bg ads for $context - {$e->getMessage()}");
             }
         });
 

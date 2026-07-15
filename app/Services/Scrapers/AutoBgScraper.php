@@ -2,7 +2,6 @@
 
 namespace App\Services\Scrapers;
 
-use App\Misc\LogChannels;
 use Carbon\Carbon;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ConnectionException;
@@ -49,7 +48,7 @@ class AutoBgScraper extends Scraper
             try {
                 $results[] = $this->mapAdvert($advert);
             } catch (\Exception $e) {
-                Log::channel(LogChannels::SCRAPING_AUTO)->error("Failed to map auto.bg advert on page $page - {$e->getMessage()}");
+                Log::error("Failed to map auto.bg advert on page $page - {$e->getMessage()}");
             }
         }
 

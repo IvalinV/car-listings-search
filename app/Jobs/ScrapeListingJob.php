@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Misc\LogChannels;
 use App\Services\ListingPersister;
 use App\Services\Scrapers\CarsBgScraper;
 use App\Services\Scrapers\Scraper;
@@ -51,7 +50,7 @@ class ScrapeListingJob implements ShouldQueue
         try {
             $this->persistRecords($results, $scraper);
         } catch (\Throwable $exception) {
-            \Log::channel(LogChannels::SCRAPING_JOB)->error("Scraping job exception: {$exception->getMessage()}");
+            \Log::error("Scraping job exception: {$exception->getMessage()}");
         }
     }
 
@@ -68,6 +67,6 @@ class ScrapeListingJob implements ShouldQueue
      */
     public function failed(?\Throwable $exception): void
     {
-        \Log::channel(LogChannels::SCRAPING_JOB)->error("Scraping job exception: {$exception->getMessage()}");
+        \Log::error("Scraping job exception: {$exception->getMessage()}");
     }
 }
