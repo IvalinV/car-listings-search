@@ -47,6 +47,26 @@ class CarListing extends Model
         return array_values(array_unique($prices));
     }
 
+    /**
+     * Bound a source price to the `decimal(10,2)` column's range. Sources
+     * occasionally emit a non-numeric placeholder (e.g. car24.bg's "enquiry"
+     * listings) or a value above 10^8 (car24.bg encodes an enquiry as the
+     * magic 119999998, and sellers enter junk). A raw value above the range
+     * would overflow the column and abort the whole insert batch, and a
+     * non-numeric one would cast to a bogus 0. Both are mapped to the unpriced
+     * sentinel so they are excluded from results rather than corrupting them.
+     */
+    public static function normalizePrice(int|float|string|null $price): float
+    {
+        if (! is_numeric($price)) {
+            return (float) self::UNPRICED_SENTINEL;
+        }
+
+        $price = (float) $price;
+
+        return $price >= self::UNPRICED_SENTINEL ? (float) self::UNPRICED_SENTINEL : $price;
+    }
+
     protected function casts(): array
     {
         return [
