@@ -19,6 +19,7 @@ class ListingPersister
             $price = $record['source'] !== 'car24.bg'
                 ? $scraper->extractPrice(Arr::get($record, 'price'))['eur']
                 : $record['price'];
+            $price = CarListing::normalizePrice($price);
 
             $image_url = Arr::get($record, 'image');
 
@@ -50,7 +51,7 @@ class ListingPersister
                 'title' => Arr::get($record, 'title'),
                 'car_make_id' => $resolved['make']?->id,
                 'car_model_id' => $resolved['model']?->id,
-                'price' => $price ?? 0,
+                'price' => $price,
                 'description' => Arr::get($record, 'description'),
                 'year' => $year,
                 'fuel_type' => $fuel_type,
