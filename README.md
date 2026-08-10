@@ -1,59 +1,66 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Car Listings Search
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Bulgarian car-listings aggregator that scrapes multiple automotive platforms, deduplicates listings, normalizes their data, and serves a searchable catalog.
 
-## About Laravel
+## Supported Sources
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- [mobile.bg](https://mobile.bg)
+- [auto.bg](https://auto.bg)
+- [cars.bg](https://cars.bg)
+- [car24.bg](https://car24.bg)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Multi-source scraping** via console commands and queue jobs.
+- **Deduplication** using perceptual image hashing, falling back to a SHA256 hash of key listing attributes.
+- **Data normalization** for prices, fuel types, transmissions, makes, and models.
+- **Search & filter** interface built with Livewire.
+- **SEO-friendly** sitemaps, robots.txt, and slugged detail URLs.
+- **Cleanup job** that probes source URLs and deactivates removed listings.
 
-## Learning Laravel
+## Tech Stack
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- PHP 8.4
+- Laravel 13
+- Livewire 4
+- Tailwind CSS v4
+- PostgreSQL
+- Pest PHP for testing
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Getting Started
 
-## Laravel Sponsors
+```bash
+composer setup
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+This installs dependencies, generates the application key, runs migrations, installs frontend packages, and builds assets.
 
-### Premium Partners
+## Development
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+composer dev
+```
 
-## Contributing
+Runs the development server, queue listener, log tail, and Vite concurrently.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Testing
 
-## Code of Conduct
+```bash
+php artisan test --compact
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Main Console Commands
 
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| Command | Purpose |
+| --- | --- |
+| `scrape:listings-initially` | Scrape as many listings as possible during initial seeding. |
+| `scrape:new-listings` | Scrape only new listings. |
+| `scrape:listings-daily` | Scrape daily listings. |
+| `scrape:makes-models` | Scrape and store car makes and models. |
+| `scrape:mobilebg-catalog` | Ingest the full mobile.bg catalog, segmented by make. |
+| `cleanup:removed-listings` | Probe source URLs and deactivate listings that have been removed. |
+| `resolve:listing-makes-models` | Resolve make/model relationships for existing listings. |
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
