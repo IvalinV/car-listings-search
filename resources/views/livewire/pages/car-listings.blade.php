@@ -9,6 +9,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Cache;
 
 new
 #[Layout('components.layouts.app')]
@@ -147,47 +148,52 @@ class extends Component {
     #[Computed]
     public function fuelTypes(): array
     {
-        return CarListing::query()
-            ->whereNotNull('fuel_type')
-            ->where('fuel_type', '!=', '')
-            ->distinct()
-            ->pluck('fuel_type')
-            ->sort()
-            ->values()
-            ->toArray();
+        return Cache::flexible('car-listings.filter-options.fuel-types', [300, 600], function (): array {
+            return CarListing::query()
+                ->whereNotNull('fuel_type')
+                ->where('fuel_type', '!=', '')
+                ->distinct()
+                ->pluck('fuel_type')
+                ->sort()
+                ->values()
+                ->toArray();
+        });
     }
 
     #[Computed]
     public function transmissions(): array
     {
-        return CarListing::query()
-            ->whereNotNull('transmission')
-            ->where('transmission', '!=', '')
-            ->distinct()
-            ->pluck('transmission')
-            ->sort()
-            ->values()
-            ->toArray();
+        return Cache::flexible('car-listings.filter-options.transmissions', [300, 600], function (): array {
+            return CarListing::query()
+                ->whereNotNull('transmission')
+                ->where('transmission', '!=', '')
+                ->distinct()
+                ->pluck('transmission')
+                ->sort()
+                ->values()
+                ->toArray();
+        });
     }
 
     #[Computed]
     public function locations(): array
     {
-        $query = CarListing::query()
-            ->whereNotNull('location')
-            ->where('location', '!=', '')
-            ->distinct()
-            ->pluck('location')
-            ->sort();
+        return Cache::flexible('car-listings.filter-options.locations', [300, 600], function (): array {
+            return CarListing::query()
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->distinct()
+                ->pluck('location')
+                ->sort()
+                ->map(function (string $item): string {
+                    $result = explode(',', $item);
 
-       return $query->map(function (string $item, int $key) {
-           $result = explode(',', $item);
-
-           return count($result) > 1  ? \Arr::get($result, 1) : \Arr::first($result);
-       })
-           ->values()
-           ->unique()
-           ->toArray();
+                    return count($result) > 1 ? \Arr::get($result, 1) : \Arr::first($result);
+                })
+                ->values()
+                ->unique()
+                ->toArray();
+        });
     }
 
     protected function selectedMake(): ?CarMake
@@ -202,27 +208,32 @@ class extends Component {
     #[Computed]
     public function makes(): array
     {
-        $counts = CarListing::query()
-            ->where('is_active', true)
-            ->priced()
-            ->whereNotNull('car_make_id')
-            ->selectRaw('car_make_id, count(*) as total')
-            ->groupBy('car_make_id')
-            ->pluck('total', 'car_make_id');
+        return Cache::flexible('car-listings.filter-options.makes', [300, 600], function (): array {
+            $makeCounts = CarListing::query()
+                ->where('is_active', true)
+                ->priced()
+                ->selectRaw('car_make_id, count(*) as total')
+                ->groupBy('car_make_id')
+                ->get();
 
-        $makes = CarMake::whereIn('id', $counts->keys())
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug'])
-            ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $counts[$m->id]])
-            ->toArray();
+            $counts = $makeCounts
+                ->whereNotNull('car_make_id')
+                ->pluck('total', 'car_make_id');
 
-        $nullMakeCount = CarListing::where('is_active', true)->priced()->whereNull('car_make_id')->count();
+            $makes = CarMake::whereIn('id', $counts->keys())
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug'])
+                ->map(fn (CarMake $m): array => ['slug' => $m->slug, 'name' => $m->name, 'count' => $counts[$m->id]])
+                ->toArray();
 
-        if ($nullMakeCount > 0) {
-            $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка', 'count' => $nullMakeCount];
-        }
+            $nullMakeCount = (int) ($makeCounts->first(fn (object $row): bool => $row->car_make_id === null)?->total ?? 0);
 
-        return $makes;
+            if ($nullMakeCount > 0) {
+                $makes[] = ['slug' => 'unspecified', 'name' => 'Без марка', 'count' => $nullMakeCount];
+            }
+
+            return $makes;
+        });
     }
 
     #[Computed]
