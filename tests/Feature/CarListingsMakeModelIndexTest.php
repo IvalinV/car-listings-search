@@ -14,3 +14,11 @@ it('indexes the make and model foreign keys on car_listings', function (): void 
     expect(Schema::hasIndex('car_listings', ['car_make_id']))->toBeTrue()
         ->and(Schema::hasIndex('car_listings', ['car_model_id']))->toBeTrue();
 });
+
+it('indexes the listing filter and sort columns', function (): void {
+    expect(Schema::hasIndex('car_listings', 'car_listings_fuel_type_filter_index'))->toBeTrue()
+        ->and(Schema::hasIndex('car_listings', 'car_listings_transmission_filter_index'))->toBeTrue()
+        ->and(Schema::hasIndex('car_listings', 'car_listings_location_filter_index'))->toBeTrue()
+        ->and(Schema::hasIndex('car_listings', 'car_listings_make_counts_index'))->toBeTrue()
+        ->and(Schema::hasIndex('car_listings', 'car_listings_effective_published_at_index'))->toBeTrue();
+});
