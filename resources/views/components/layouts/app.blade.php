@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="bg" class="scroll-smooth">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,25 +11,47 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
 
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="manifest" href="/site.webmanifest">
+
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
     @stack('seo')
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+
 <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
-    <header class="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/80">
+    <header
+        class="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/80">
         <nav class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-            <a href="{{ url('/') }}" class="flex items-center gap-2 text-xl font-bold text-blue-600 dark:text-blue-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
-                    <circle cx="7" cy="17" r="2"/>
-                    <path d="M9 17h6"/>
-                    <circle cx="17" cy="17" r="2"/>
+            <a href="{{ url('/') }}"
+                class="flex items-center gap-2 text-xl font-bold text-blue-600 dark:text-blue-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                    <circle cx="7" cy="17" r="2" />
+                    <path d="M9 17h6" />
+                    <circle cx="17" cy="17" r="2" />
                 </svg>
                 <span>AutoSearch</span>
             </a>
 
             <div class="flex items-center gap-4">
-                <a href="{{ url('/') }}" class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">
+                <a href="{{ url('/') }}"
+                    class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">
                     Обяви
                 </a>
             </div>
@@ -45,7 +68,9 @@
                 <p class="text-sm text-gray-500 dark:text-white">
                     AutoSearch - Агрегатор на автомобилни обяви от България
                 </p>
-                <a href="{{ route('make-index') }}" class="text-sm text-gray-500 hover:text-blue-600 dark:text-white dark:hover:text-gray-300" wire:navigate>Марки</a>
+                <a href="{{ route('make-index') }}"
+                    class="text-sm text-gray-500 hover:text-blue-600 dark:text-white dark:hover:text-gray-300"
+                    wire:navigate>Марки</a>
                 <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-white">
                     <a class="dark:hover:text-gray-300" href="https://www.cars.bg/" target="_blank">cars.bg</a>
                     <a class="dark:hover:text-gray-300" href="https://www.mobile.bg/" target="_blank">mobile.bg</a>
@@ -56,4 +81,5 @@
         </div>
     </footer>
 </body>
+
 </html>
